@@ -21,13 +21,12 @@ when darwin {
 }
 
 when windows {
-    link "ole32.lib"
-    link "shell32.lib"
-    link "shlwapi.lib"
-    link "user32.lib"
-    link "advapi32.lib"
-    link "version.lib"
-    link "WebView2LoaderStatic.lib"
+    link "-lole32"
+    link "-lshell32"
+    link "-lshlwapi"
+    link "-luser32"
+    link "-ladvapi32"
+    link "-lversion"
 }
 
 pub val HINT_NONE: i32 = 0

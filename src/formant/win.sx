@@ -5,7 +5,7 @@
 /// runtime decide when they are available.
 
 when windows {
-    link "dwmapi.lib"
+    link "-ldwmapi"
 }
 
 pub extern (C) fn is_wayland() i32 = "fm_is_wayland"
