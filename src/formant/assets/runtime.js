@@ -288,6 +288,15 @@
     const el = event.target;
     if (!el || !el.name) return;
     if (el.type === "range") {
+      const min = Number(el.min || 0);
+      const max = Number(el.max || 100);
+      if (max > min) {
+        const pct = Math.max(
+          0,
+          Math.min(100, ((Number(el.value) - min) / (max - min)) * 100),
+        );
+        el.style.setProperty("--fm-range-value", pct + "%");
+      }
       const row = el.closest(".fm-range-row");
       if (row) {
         const out = row.querySelector("output");

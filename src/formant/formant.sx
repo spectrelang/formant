@@ -401,7 +401,7 @@ pub fn select(
         return
     }
     val mn: mut ref node.Node = n as mut ref node.Node
-    add_option_spec(f.arena, mn, options)
+    add_option_spec(f.arena, mn, options, false)
     f.last_field = n
 }
 
@@ -416,7 +416,7 @@ pub fn radio(
         return
     }
     val mn: mut ref node.Node = n as mut ref node.Node
-    add_option_spec(f.arena, mn, options)
+    add_option_spec(f.arena, mn, options, false)
     f.last_field = n
 }
 
@@ -462,7 +462,8 @@ pub fn add_option(f: mut ref Form, value: str.StringView, label: str.StringView)
 fn add_option_spec(
     b: ref mem.Bump,
     n: mut ref node.Node,
-    options: str.StringView
+    options: str.StringView,
+    as_columns: bool
 ) void = trust {
     if options.len <= 0 {
         return
@@ -480,14 +481,27 @@ fn add_option_spec(
                 val item: str.StringView = str.slice(options, start, i)
                 val colon = str.find(item, ":")
                 if colon is some at {
-                    node.option_add(
-                        b,
-                        n,
-                        str.slice(item, 0, at),
-                        str.slice(item, at + 1, item.len)
-                    )
+                    if as_columns {
+                        node.column_add(
+                            b,
+                            n,
+                            str.slice(item, 0, at),
+                            str.slice(item, at + 1, item.len)
+                        )
+                    } else {
+                        node.option_add(
+                            b,
+                            n,
+                            str.slice(item, 0, at),
+                            str.slice(item, at + 1, item.len)
+                        )
+                    }
                 } else {
-                    node.option_add(b, n, item, item)
+                    if as_columns {
+                        node.column_add(b, n, item, item)
+                    } else {
+                        node.option_add(b, n, item, item)
+                    }
                 }
             }
             start = i + 1
@@ -588,7 +602,7 @@ pub fn table(f: mut ref Form, columns: str.StringView) void = trust {
         return
     }
     val mn: mut ref node.Node = n as mut ref node.Node
-    add_option_spec(f.arena, mn, columns)
+    add_option_spec(f.arena, mn, columns, true)
     add(f, n)
     f.cursor = n
     f.table = n

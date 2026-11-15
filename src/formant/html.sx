@@ -317,6 +317,23 @@ fn render_field_footer(sb: builder.StringBuilder, n: ref node.Node) void = trust
     builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-error\" aria-live=\"polite\"></div>")
 }
 
+fn range_percent(n: ref node.Node) i64 = {
+    val lo: i64 = @atoi(n.min)
+    val hi: i64 = @atoi(n.max)
+    val value: i64 = @atoi(n.value)
+    if hi <= lo {
+        return 0
+    }
+    val pct: mut i64 = ((value - lo) * 100) / (hi - lo)
+    if pct < 0 {
+        pct = 0
+    }
+    if pct > 100 {
+        pct = 100
+    }
+    return pct
+}
+
 fn render_input(sb: builder.StringBuilder, n: ref node.Node) void = trust {
     builder.StringBuilder.append_cstr(sb, c"<input class=\"fm-input\"")
     control_id(sb, n)
@@ -329,6 +346,11 @@ fn render_input(sb: builder.StringBuilder, n: ref node.Node) void = trust {
     put_attr(sb, c"min", n.min)
     put_attr(sb, c"max", n.max)
     put_attr(sb, c"step", n.step)
+    if n.field == node.FieldKind.Range {
+        builder.StringBuilder.append_cstr(sb, c" style=\"--fm-range-value: ")
+        put_int(sb, range_percent(n))
+        builder.StringBuilder.append_cstr(sb, c"%\"")
+    }
     put_bool_attr(sb, c"required", n.required)
     put_bool_attr(sb, c"disabled", n.disabled)
     passthrough_attrs(sb, n)
