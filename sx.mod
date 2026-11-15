@@ -8,7 +8,12 @@ build release {
 
 build dev {
     entry "./src/main.sx"
-    flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "formant-dev", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
+    windows {
+        flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "formant-dev.exe", "-link-obj:$OUT/webview.o", "link-obj:$OUT/windecor.o"]
+    }
+    posix {
+        flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "formant-dev", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
+    }
 }
 
 build example {
