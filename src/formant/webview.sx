@@ -4,18 +4,14 @@
 /// linked into the executable. Only the public C surface is used here.
 
 when linux {
-    // Keep the linker from dropping libraries that appear before the object
-    // files on the command line.
     link "-Wl,--no-as-needed"
     lib "webkit2gtk-4.1"
     link "-lstdc++"
 }
 
 when darwin {
-    link "-framework"
-    link "WebKit"
-    link "-framework"
-    link "Cocoa"
+    link "-Wl,-framework,WebKit"
+    link "-Wl,-framework,Cocoa"
     link "-ldl"
     link "-lc++"
 }

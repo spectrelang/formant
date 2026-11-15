@@ -84,14 +84,12 @@ static void fm_reveal_tick(NSTimer *timer) {
     [window makeKeyAndOrderFront:nil];
 }
 
-extern "C" {
-
 int fm_is_wayland(void) {
     return 0;
 }
 
 int fm_supports_custom(void *window) {
-    return window != nullptr ? 1 : 0;
+    return window != NULL ? 1 : 0;
 }
 
 void fm_set_decorated(void *window, int decorated) {
@@ -114,7 +112,7 @@ void fm_set_decorated(void *window, int decorated) {
         native_window.titleVisibility = NSWindowTitleHidden;
         native_window.movableByWindowBackground = NO;
         if (@available(macOS 11.0, *)) {
-            native_window.titlebarSeparatorStyle = NSWindowTitlebarSeparatorStyleNone;
+            native_window.titlebarSeparatorStyle = NSTitlebarSeparatorStyleNone;
         }
         fm_install_monitor();
     }
@@ -192,5 +190,3 @@ void fm_begin_resize(void *window, int edge) {
     (void)window;
     (void)edge;
 }
-
-} // extern "C"

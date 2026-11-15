@@ -1,3 +1,6 @@
+*.DS_Store
+*.dSYM
+examples/custom_titlebar
 examples/contact_form
 examples/profile_form
 component_gallery
