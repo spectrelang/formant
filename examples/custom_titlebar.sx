@@ -1,0 +1,120 @@
+/// A form with a client-drawn title bar.
+///
+/// `Decorations.Custom` replaces the native window frame with the header node.
+/// The runtime handles dragging, double-click maximize, caption buttons, and
+/// edge resizing, so the form itself only describes its content.
+
+val formant = use("../src/formant/formant.sx")
+val stdio   = use("std/stdio")
+val str     = use("std/string")
+
+fn on_event(ev: formant.Event, _: ref void) void = trust {
+    if str.eql_cstr(ev.kind, c"submit") {
+        val name: str.StringView = formant.value(ev.values, "name")
+        val email: str.StringView = formant.value(ev.values, "email")
+        if name.len == 0 {
+            formant.set_error(ev.form, "name", "Your name is required.")
+            formant.focus(ev.form, "name")
+            return
+        }
+        if !str.contains(email, "@") {
+            formant.set_error(ev.form, "email", "Enter a valid email address.")
+            formant.focus(ev.form, "email")
+            return
+        }
+        formant.clear_errors(ev.form)
+        formant.toast(ev.form, "Profile saved.", "success")
+        return
+    }
+
+    if str.eql_cstr(ev.kind, c"click") {
+        if str.eql_cstr(ev.name, c"reset") {
+            formant.set_value(ev.form, "name", "")
+            formant.set_value(ev.form, "email", "")
+            formant.set_checked(ev.form, "updates", false)
+            formant.toast(ev.form, "Changes discarded.", "info")
+        } elif str.eql_cstr(ev.name, c"help") {
+            formant.toast(
+                ev.form,
+                "Drag the title bar to move the window. Double-click it to maximize.",
+                "info"
+            )
+        } elif str.eql_cstr(ev.name, c"about") {
+            formant.open_dialog(ev.form, "about")
+        } elif str.eql_cstr(ev.name, c"close-about") {
+            formant.close_dialog(ev.form, "about")
+        }
+    }
+}
+
+pub fn main() i32 = trust {
+    match formant.new_form("Formant | Custom title bar", 960, 780) {
+        err e => {
+            stdio.print("formant: {s}\n", {e.message})
+            return 1
+        }
+        ok f => {
+            formant.set_decorations(f, formant.Decorations.Custom)
+
+            formant.header(f, "Preferences", "Custom title bar, drawn by the webview")
+            formant.button(f, "help", "Help", 3)
+            formant.menu(f, "More")
+            formant.menu_item(f, "about", "About this demo")
+            formant.end(f)
+            formant.end(f)
+
+            formant.section(f, "Profile", "The header above is also the window title bar")
+            formant.row(f)
+            formant.text_input(f, "name", "Name")
+            formant.required(f)
+            formant.placeholder(f, "Ada Lovelace")
+            formant.email_input(f, "email", "Email")
+            formant.placeholder(f, "ada@example.com")
+            formant.end(f)
+            formant.checkbox(f, "updates", "Send me occasional product updates")
+            formant.end(f)
+
+            formant.section(
+                f,
+                "Window chrome",
+                "No native frame is used while custom decorations are enabled"
+            )
+            formant.text(
+                f,
+                "Drag the title bar to move the window and double-click it to maximize. Minimize, maximize, and close use the host platform's own window graphics."
+            )
+            formant.radio(
+                f,
+                "density",
+                "Interface density",
+                "comfortable:Comfortable|compact:Compact"
+            )
+            formant.end(f)
+
+            formant.actions(f)
+            formant.button(f, "reset", "Discard", 3)
+            formant.submit_button(f, "save", "Save changes")
+            formant.end(f)
+
+            formant.dialog(f, "about", "About this demo")
+            formant.text(
+                f,
+                "The title bar is part of the form: it is a header node styled by the active theme. The runtime supplies window commands and edge resizing."
+            )
+            formant.actions(f)
+            formant.button(f, "close-about", "Close", 1)
+            formant.end(f)
+            formant.end(f)
+
+            formant.on_submit(f, on_event, none)
+            formant.on_action(f, "help", on_event, none)
+            formant.on_action(f, "reset", on_event, none)
+            formant.on_action(f, "about", on_event, none)
+            formant.on_action(f, "close-about", on_event, none)
+
+            val code: i32 = formant.run(f)
+            formant.free(f)
+            return code
+        }
+    }
+}

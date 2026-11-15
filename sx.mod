@@ -31,6 +31,16 @@ build example_all {
     flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "examples/component_gallery", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
 }
 
+build example_titlebar {
+    entry "./examples/custom_titlebar.sx"
+    windows {
+        flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "examples/custom_titlebar.exe", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
+    }
+    posix {
+        flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "examples/custom_titlebar", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
+    }
+}
+
 dep "https://github.com/webview/webview.git" {
     windows {
         build_actions {
