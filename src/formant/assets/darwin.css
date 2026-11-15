@@ -1,184 +1,596 @@
-/* macOS Aqua / Sonoma-inspired theme. */
+/* macOS Tahoe (26) inspired theme.
+ *
+ * Follows the current AppKit design language: the system font at 13px, a
+ * grouped window background, inset cards with hairline separators, compact
+ * 24-26px controls, continuous 6-12px corner radii, and translucent chrome
+ * layered with backdrop blur. Light and dark values mirror the system's
+ * semantic colors.
+ */
 
 .fm-theme-darwin {
-  --fm-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --fm-font: -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", sans-serif;
   --fm-font-size: 13px;
-  --fm-line-height: 1.4;
+  --fm-line-height: 1.35;
   --fm-bg: #f2f2f7;
   --fm-surface: #ffffff;
-  --fm-surface-2: #f5f5f7;
+  --fm-surface-2: #f7f7f9;
   --fm-surface-3: #e8e8ed;
   --fm-text: #1d1d1f;
-  --fm-muted: #6e6e73;
-  --fm-border: #d9d9de;
-  --fm-border-strong: #c6c6c8;
+  --fm-muted: #86868b;
+  --fm-border: rgba(0, 0, 0, 0.08);
+  --fm-border-strong: rgba(0, 0, 0, 0.18);
   --fm-accent: #007aff;
-  --fm-accent-hover: #0069d9;
+  --fm-accent-hover: #006fe0;
   --fm-accent-fg: #ffffff;
+  --fm-danger: #d70015;
+  --fm-danger-bg: rgba(215, 0, 21, 0.08);
+  --fm-success: #28a745;
+  --fm-warning: #f0a30a;
   --fm-radius: 6px;
-  --fm-radius-lg: 10px;
-  --fm-control-h: 30px;
-  --fm-btn-h: 30px;
-  --fm-gap: 18px;
-  --fm-header-h: 52px;
-  --fm-header-bg: #f6f6f6;
-  --fm-header-border: #d1d1d1;
+  --fm-radius-lg: 12px;
+  --fm-control-h: 26px;
+  --fm-btn-h: 25px;
+  --fm-gap: 14px;
+  --fm-page-pad: 20px;
+  --fm-max-width: 720px;
+  --fm-header-h: 44px;
+  --fm-header-bg: rgba(246, 246, 248, 0.78);
+  --fm-header-border: rgba(0, 0, 0, 0.09);
   --fm-input-bg: #ffffff;
-  --fm-btn-bg: #ffffff;
-  --fm-btn-hover: #f7f7f7;
-  --fm-btn-active: #ececec;
-  --fm-btn-border: #c9c9cc;
-  --fm-focus: 0 0 0 3px rgba(0, 122, 255, 0.28);
-  --fm-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.14);
-  --fm-shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.26);
+  --fm-btn-bg: rgba(255, 255, 255, 0.9);
+  --fm-btn-hover: rgba(250, 250, 252, 1);
+  --fm-btn-active: rgba(235, 235, 238, 1);
+  --fm-btn-border: rgba(0, 0, 0, 0.14);
+  --fm-focus: 0 0 0 3.5px rgba(0, 122, 255, 0.22);
+  --fm-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.1);
+  --fm-shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.22), 0 0 0 0.5px rgba(0, 0, 0, 0.1);
+  --fm-window-btn-size: 22px;
+  --fm-scroll: rgba(0, 0, 0, 0.24);
+  --fm-scroll-hover: rgba(0, 0, 0, 0.4);
 }
+
+/* ---------------------------------------------------------------- chrome -- */
 
 .fm-theme-darwin .fm-headerbar {
   background: var(--fm-header-bg);
-  border-bottom-color: var(--fm-header-border);
+  border-bottom: 0.5px solid var(--fm-header-border);
+  box-shadow: 0 0.5px 0 rgba(255, 255, 255, 0.65) inset;
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
   padding-left: 84px;
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
+  gap: 10px;
+}
+
+.fm-theme-darwin .fm-headerbar-title {
+  gap: 8px;
 }
 
 .fm-theme-darwin .fm-headerbar-title .fm-title {
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
+  color: var(--fm-text);
 }
 
 .fm-theme-darwin .fm-headerbar-title .fm-subtitle {
   font-size: 11px;
+  color: var(--fm-muted);
+}
+
+/* Put the header buttons on a glassy, compact footing. */
+.fm-theme-darwin .fm-headerbar .fm-btn {
+  --fm-btn-h: 23px;
+  min-height: 23px;
+  padding: 1px 10px;
+  font-weight: 500;
+  border-radius: 6px;
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.08);
+}
+
+.fm-theme-darwin .fm-headerbar .fm-btn-ghost {
+  box-shadow: none;
+}
+
+/* ---------------------------------------------------------------- layout -- */
+
+.fm-theme-darwin .fm-main {
+  padding-top: 18px;
+}
+
+.fm-theme-darwin .fm-form {
+  gap: var(--fm-gap);
 }
 
 .fm-theme-darwin .fm-section {
-  border-color: #e3e3e8;
-  box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.05);
+  background: var(--fm-surface);
+  border: 0.5px solid var(--fm-border);
+  border-radius: var(--fm-radius-lg);
+  padding: 14px 16px 16px;
+  gap: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 0.5px 0.5px rgba(0, 0, 0, 0.03);
 }
 
-.fm-theme-darwin .fm-label {
-  font-weight: 500;
-  font-size: 12px;
-  color: #3a3a3c;
-}
-
-.fm-theme-darwin .fm-input,
-.fm-theme-darwin .fm-textarea,
-.fm-theme-darwin .fm-select {
-  border-color: var(--fm-border-strong);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
-  padding: 4px 8px;
-}
-
-.fm-theme-darwin .fm-input:focus,
-.fm-theme-darwin .fm-textarea:focus,
-.fm-theme-darwin .fm-select:focus {
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.04), var(--fm-focus);
-}
-
-.fm-theme-darwin .fm-btn {
-  padding: 3px 13px;
-  font-weight: 500;
-  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.16), inset 0 0.5px 0 rgba(255, 255, 255, 0.8);
-}
-
-.fm-theme-darwin .fm-btn-primary {
-  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.2), inset 0 0.5px 0 rgba(255, 255, 255, 0.28);
-}
-
-.fm-theme-darwin .fm-btn:active {
-  transform: none;
-  box-shadow: none;
+.fm-theme-darwin .fm-section-head {
+  gap: 2px;
 }
 
 .fm-theme-darwin .fm-section-title {
   font-size: 13px;
   font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--fm-text);
 }
 
 .fm-theme-darwin .fm-section-desc {
   font-size: 11px;
+  line-height: 1.35;
+  color: var(--fm-muted);
 }
 
-.fm-theme-darwin .fm-tab {
-  font-weight: 500;
+.fm-theme-darwin .fm-row {
+  gap: 12px;
+}
+
+.fm-theme-darwin .fm-field {
+  gap: 5px;
+}
+
+.fm-theme-darwin .fm-label {
   font-size: 12px;
-  border-radius: 5px;
-  border-bottom: 0;
-  padding: 5px 10px;
+  font-weight: 500;
+  color: #3a3a3c;
 }
 
-.fm-theme-darwin .fm-tab.fm-active {
-  background: var(--fm-surface);
-  color: var(--fm-text);
-  box-shadow: var(--fm-shadow);
+.fm-theme-darwin .fm-help,
+.fm-theme-darwin .fm-error {
+  font-size: 11px;
 }
+
+.fm-theme-darwin .fm-text {
+  font-size: 12px;
+  line-height: 1.45;
+    color: var(--fm-muted);
+}
+
+/* --------------------------------------------------------------- controls -- */
+
+.fm-theme-darwin .fm-input,
+.fm-theme-darwin .fm-textarea,
+.fm-theme-darwin .fm-select {
+  min-height: var(--fm-control-h);
+  padding: 3px 8px;
+  font-size: 13px;
+  border: 0.5px solid var(--fm-border-strong);
+  border-radius: var(--fm-radius);
+  box-shadow: 0 0.5px 0 rgba(0, 0, 0, 0.02), inset 0 1px 1px rgba(0, 0, 0, 0.03);
+}
+
+.fm-theme-darwin .fm-textarea {
+  min-height: 84px;
+  padding: 5px 8px;
+  line-height: 1.4;
+}
+
+.fm-theme-darwin .fm-select {
+  padding-right: 28px;
+  background-position: right 9px center;
+}
+
+.fm-theme-darwin .fm-input:focus,
+.fm-theme-darwin .fm-textarea:focus,
+.fm-theme-darwin .fm-select:focus {
+  border-color: var(--fm-accent);
+  box-shadow: var(--fm-focus);
+}
+
+.fm-theme-darwin .fm-input::placeholder,
+.fm-theme-darwin .fm-textarea::placeholder {
+  color: #a0a0a6;
+  opacity: 1;
+}
+
+.fm-theme-darwin .fm-checkrow input,
+.fm-theme-darwin .fm-radio input {
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+}
+
+.fm-theme-darwin .fm-checkrow,
+.fm-theme-darwin .fm-radio {
+  font-size: 13px;
+  gap: 8px;
+}
+
+.fm-theme-darwin .fm-radiolist {
+  gap: 6px;
+}
+
+.fm-theme-darwin .fm-range-row {
+  gap: 10px;
+}
+
+.fm-theme-darwin .fm-range-row output {
+  font-size: 12px;
+  min-width: 28px;
+}
+
+/* ---------------------------------------------------------------- buttons -- */
+
+.fm-theme-darwin .fm-btn {
+  min-height: var(--fm-btn-h);
+  padding: 2px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 0.5px solid var(--fm-btn-border);
+  border-radius: var(--fm-radius);
+  background: var(--fm-btn-bg);
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.1), inset 0 0.5px 0 rgba(255, 255, 255, 0.75);
+  transition: background 100ms ease, box-shadow 100ms ease;
+}
+
+.fm-theme-darwin .fm-btn:hover {
+  background: var(--fm-btn-hover);
+}
+
+.fm-theme-darwin .fm-btn:active {
+  background: var(--fm-btn-active);
+  transform: none;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.09);
+}
+
+.fm-theme-darwin .fm-btn:focus-visible {
+  box-shadow: var(--fm-focus);
+}
+
+.fm-theme-darwin .fm-btn-primary {
+  background: var(--fm-accent);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--fm-accent-fg);
+  box-shadow: 0 0.5px 1.5px rgba(0, 80, 190, 0.35), inset 0 0.5px 0 rgba(255, 255, 255, 0.28);
+}
+
+.fm-theme-darwin .fm-btn-primary:hover {
+  background: var(--fm-accent-hover);
+}
+
+.fm-theme-darwin .fm-btn-primary:active {
+  background: #0064cc;
+  box-shadow: inset 0 1px 2px rgba(0, 40, 100, 0.35);
+}
+
+.fm-theme-darwin .fm-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.fm-theme-darwin .fm-btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.fm-theme-darwin .fm-btn-link {
+  font-weight: 400;
+  color: var(--fm-accent);
+}
+
+.fm-theme-darwin .fm-btn-sm {
+  min-height: 21px;
+  padding: 1px 8px;
+  font-size: 11px;
+}
+
+.fm-theme-darwin .fm-actions {
+  gap: 8px;
+  padding-top: 0;
+}
+
+/* ------------------------------------------------------------------- tabs -- */
 
 .fm-theme-darwin .fm-tablist {
-  border-bottom: 0;
-  padding: 3px;
-  background: var(--fm-surface-3);
+  background: rgba(0, 0, 0, 0.055);
   border-radius: 7px;
+  padding: 2px;
+  gap: 2px;
   align-self: flex-start;
 }
 
+.fm-theme-darwin .fm-tab {
+  min-height: 20px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #3a3a3c;
+  border-radius: 5px;
+  border-bottom: 0;
+}
+
+.fm-theme-darwin .fm-tab:hover {
+  color: var(--fm-text);
+}
+
+.fm-theme-darwin .fm-tab.fm-active {
+  background: #ffffff;
+  color: var(--fm-text);
+  box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.16), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+}
+
+/* ------------------------------------------------------------------ table -- */
+
+.fm-theme-darwin .fm-table {
+  font-size: 12px;
+}
+
 .fm-theme-darwin .fm-table th {
+  font-size: 11px;
+  font-weight: 600;
   text-transform: none;
   letter-spacing: 0;
+  color: var(--fm-muted);
+  background: transparent;
+  padding: 5px 10px;
+}
+
+.fm-theme-darwin .fm-table th,
+.fm-theme-darwin .fm-table td {
+  padding: 6px 10px;
+  border-bottom: 0.5px solid var(--fm-border);
+}
+
+.fm-theme-darwin .fm-table tbody tr:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* -------------------------------------------------------------- progress -- */
+
+.fm-theme-darwin .fm-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.09);
+}
+
+.fm-theme-darwin .fm-progress::-webkit-progress-bar {
+  background: rgba(0, 0, 0, 0.09);
+  border-radius: 3px;
+}
+
+.fm-theme-darwin .fm-progress::-webkit-progress-value {
+  border-radius: 3px;
+}
+
+.fm-theme-darwin .fm-progress-label {
   font-size: 11px;
-  background: #f7f7f9;
+}
+
+/* ----------------------------------------------------------------- menus -- */
+
+.fm-theme-darwin .fm-menu-trigger {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.fm-theme-darwin .fm-menu-trigger:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.fm-theme-darwin .fm-menu-items {
+  min-width: 180px;
+  padding: 4px;
+  border-radius: 9px;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  background: rgba(250, 250, 252, 0.85);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+}
+
+.fm-theme-darwin .fm-menu-item {
+  padding: 4px 8px;
+  font-size: 13px;
+  border-radius: 5px;
+}
+
+/* --------------------------------------------------------- dialogs/toasts -- */
+
+.fm-theme-darwin .fm-dialog-backdrop {
+  background: rgba(0, 0, 0, 0.24);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
 
 .fm-theme-darwin .fm-dialog {
-  border-radius: 12px;
+  border-radius: 14px;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 0 0 0.5px rgba(0, 0, 0, 0.1);
+}
+
+.fm-theme-darwin .fm-dialog-head {
+  padding: 13px 16px;
+  border-bottom: 0.5px solid var(--fm-border);
+}
+
+.fm-theme-darwin .fm-dialog-head h2 {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fm-theme-darwin .fm-dialog-body {
+  padding: 16px;
+  gap: 12px;
+}
+
+.fm-theme-darwin .fm-dialog-close {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 15px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .fm-theme-darwin .fm-toast {
-  border-radius: 8px;
+  border-radius: 10px;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  background: rgba(250, 250, 252, 0.85);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
+  font-size: 12px;
+  padding: 9px 13px;
+  border-left-width: 0.5px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
 }
+
+.fm-theme-darwin .fm-toast.fm-toast-success,
+.fm-theme-darwin .fm-toast.fm-toast-error,
+.fm-theme-darwin .fm-toast.fm-toast-info,
+.fm-theme-darwin .fm-toast.fm-toast-warning {
+  border-left-width: 3px;
+}
+
+.fm-theme-darwin .fm-badge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 0 6px;
+  border-radius: 5px;
+  letter-spacing: 0;
+}
+
+.fm-theme-darwin .fm-divider {
+  border-top: 0.5px solid var(--fm-border);
+}
+
+/* Overlay-style scrollbars: a slim thumb over a transparent track. */
+.fm-theme-darwin ::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+.fm-theme-darwin ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fm-theme-darwin ::-webkit-scrollbar-thumb {
+  background: var(--fm-scroll);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 11px;
+}
+
+.fm-theme-darwin ::-webkit-scrollbar-thumb:hover {
+  background: var(--fm-scroll-hover);
+  background-clip: padding-box;
+}
+
+/* ------------------------------------------------------------------ dark -- */
 
 @media (prefers-color-scheme: dark) {
   .fm-theme-darwin {
-    --fm-bg: #1e1e1e;
-    --fm-surface: #2a2a2a;
-    --fm-surface-2: #323232;
+    --fm-bg: #1e1e20;
+    --fm-surface: #2c2c2e;
+    --fm-surface-2: #323234;
     --fm-surface-3: #3a3a3c;
-    --fm-text: #f2f2f7;
+    --fm-text: #f5f5f7;
     --fm-muted: #98989d;
-    --fm-border: #3f3f42;
-    --fm-border-strong: #545458;
+    --fm-border: rgba(255, 255, 255, 0.08);
+    --fm-border-strong: rgba(255, 255, 255, 0.16);
     --fm-accent: #0a84ff;
-    --fm-accent-hover: #2f96ff;
-    --fm-header-bg: #2a2a2a;
-    --fm-header-border: #1b1b1b;
-    --fm-input-bg: #1f1f1f;
-    --fm-btn-bg: #3a3a3c;
-    --fm-btn-hover: #444446;
-    --fm-btn-active: #4d4d50;
-    --fm-btn-border: #545458;
-    --fm-focus: 0 0 0 3px rgba(10, 132, 255, 0.35);
+    --fm-accent-hover: #3395ff;
+    --fm-danger: #ff453a;
+    --fm-danger-bg: rgba(255, 69, 58, 0.14);
+    --fm-header-bg: rgba(38, 38, 40, 0.76);
+    --fm-header-border: rgba(255, 255, 255, 0.08);
+    --fm-input-bg: rgba(255, 255, 255, 0.045);
+    --fm-btn-bg: rgba(255, 255, 255, 0.08);
+    --fm-btn-hover: rgba(255, 255, 255, 0.13);
+    --fm-btn-active: rgba(255, 255, 255, 0.19);
+    --fm-btn-border: rgba(255, 255, 255, 0.1);
+    --fm-focus: 0 0 0 3.5px rgba(10, 132, 255, 0.38);
+    --fm-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.45);
+    --fm-shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.6), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+    --fm-scroll: rgba(255, 255, 255, 0.22);
+    --fm-scroll-hover: rgba(255, 255, 255, 0.36);
+  }
+
+  .fm-theme-darwin .fm-headerbar {
+    box-shadow: 0 0.5px 0 rgba(255, 255, 255, 0.06) inset;
+  }
+
+  .fm-theme-darwin .fm-section {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   }
 
   .fm-theme-darwin .fm-label {
     color: #d8d8dc;
   }
 
-  .fm-theme-darwin .fm-section {
-    border-color: #3a3a3c;
-  }
-
-  .fm-theme-darwin .fm-table th {
-    background: #323232;
-  }
-
-  .fm-theme-darwin .fm-tab.fm-active {
-    background: #3a3a3c;
+  .fm-theme-darwin .fm-input,
+  .fm-theme-darwin .fm-textarea,
+  .fm-theme-darwin .fm-select {
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.25);
   }
 
   .fm-theme-darwin .fm-select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2398989d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
+
+  .fm-theme-darwin .fm-btn {
+    box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.35), inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .fm-theme-darwin .fm-btn-primary {
+    color: #ffffff;
+    box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.4), inset 0 0.5px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .fm-theme-darwin .fm-tablist {
+    background: rgba(255, 255, 255, 0.065);
+  }
+
+  .fm-theme-darwin .fm-tab {
+    color: #c7c7cc;
+  }
+
+  .fm-theme-darwin .fm-tab.fm-active {
+    background: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  }
+
+  .fm-theme-darwin .fm-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .fm-theme-darwin .fm-progress,
+  .fm-theme-darwin .fm-progress::-webkit-progress-bar {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .fm-theme-darwin .fm-menu-items,
+  .fm-theme-darwin .fm-toast {
+    background: rgba(44, 44, 46, 0.82);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  }
+
+  .fm-theme-darwin .fm-dialog {
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+  }
+
+  .fm-theme-darwin .fm-dialog-backdrop {
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .fm-theme-darwin .fm-btn-ghost:hover,
+  .fm-theme-darwin .fm-menu-trigger:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
 }
+
+/* ------------------------------------------------- native window controls -- */
 
 .fm-platform-darwin.fm-custom-decorations .fm-window-controls {
   display: none;
