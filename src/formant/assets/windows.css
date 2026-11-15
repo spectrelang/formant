@@ -192,7 +192,11 @@
 
 .fm-theme-windows .fm-window-controls {
   gap: 0;
-  margin-left: 10px;
+  margin: 0;
+}
+
+.fm-theme-windows {
+  --fm-window-controls-width: 142px;
 }
 
 .fm-theme-windows .fm-window-btn {

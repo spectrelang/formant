@@ -187,3 +187,7 @@
 .fm-platform-darwin.fm-custom-decorations .fm-resize-handle {
   display: none;
 }
+
+.fm-platform-darwin.fm-custom-decorations .fm-headerbar-actions {
+  padding-right: 0;
+}

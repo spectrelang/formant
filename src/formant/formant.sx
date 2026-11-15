@@ -1268,6 +1268,10 @@ pub fn run_with(f: mut ref Form, debug: bool) i32 = trust {
     webview.set_html(f.wv, doc.ptr)
     builder.StringBuilder.free(doc)
 
+    if native != none {
+        win.show_when_loaded(native)
+    }
+
     val code: i32 = webview.run(f.wv)
     webview.destroy(f.wv)
     f.wv = none

@@ -668,7 +668,7 @@
 }
 
 .fm-theme-linux .fm-window-controls {
-  margin-left: 12px;
+  margin: 0;
 }
 
 .fm-theme-linux .fm-window-btn {

@@ -39,6 +39,7 @@
   --fm-btn-border: #c0bfbc;
   --fm-window-btn-size: 28px;
   --fm-window-btn-radius: 999px;
+  --fm-window-controls-width: 100px;
   --fm-window-close-hover: #e01b24;
   --fm-window-close-fg: #ffffff;
   --fm-scroll: rgba(0, 0, 0, 0.22);
@@ -182,8 +183,22 @@ textarea {
   margin-left: 8px;
 }
 
+.fm-custom-decorations .fm-headerbar {
+  padding-right: 0;
+}
+
+.fm-custom-decorations .fm-headerbar-actions {
+  padding-right: var(--fm-window-controls-width);
+}
+
 .fm-custom-decorations .fm-window-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
+  height: 100%;
+  margin: 0;
+  gap: 2px;
 }
 
 .fm-window-btn {
