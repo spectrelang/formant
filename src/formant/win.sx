@@ -1,0 +1,21 @@
+/// Native window decoration bridge.
+///
+/// Custom decorations are opt-in. The bridge only implements the small set of
+/// window operations that a client-drawn titlebar needs; the HTML renderer and
+/// runtime decide when they are available.
+
+when windows {
+    link "dwmapi.lib"
+}
+
+pub extern (C) fn is_wayland() i32 = "fm_is_wayland"
+pub extern (C) fn supports_custom(window: ref void) i32 = "fm_supports_custom"
+pub extern (C) fn set_decorated(window: ref void, decorated: i32) void = "fm_set_decorated"
+pub extern (C) fn set_titlebar_height(window: ref void, height: i32) void = "fm_set_titlebar_height"
+pub extern (C) fn minimize(window: ref void) void = "fm_minimize"
+pub extern (C) fn toggle_maximize(window: ref void) void = "fm_toggle_maximize"
+pub extern (C) fn is_maximized(window: ref void) i32 = "fm_is_maximized"
+pub extern (C) fn close_window(window: ref void) void = "fm_close_window"
+pub extern (C) fn begin_move(window: ref void) void = "fm_begin_move"
+pub extern (C) fn begin_resize(window: ref void, edge: i32) void = "fm_begin_resize"
+pub extern (C) fn show_when_loaded(window: ref void) void = "fm_show_when_loaded"
