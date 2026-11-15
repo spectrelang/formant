@@ -9,7 +9,7 @@ build release {
 build dev {
     entry "./src/main.sx"
     windows {
-        flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "formant-dev.exe", "-link-obj:$OUT/webview.o", "link-obj:$OUT/windecor.o"]
+        flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "formant-dev.exe", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
     }
     posix {
         flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "formant-dev", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
@@ -32,7 +32,14 @@ build example_all {
 }
 
 dep "https://github.com/webview/webview.git" {
-    build_actions {
-        "sh ../../scripts/build_webview.sh $OUT || cmd /c ..\..\scripts\build_webview.bat $OUT"
+    windows {
+        build_actions {
+            "cmd /c ..\..\scripts\build_webview.bat $OUT"
+        }
+    }
+    posix {
+        build_actions {
+            "sh ../../scripts/build_webview.sh $OUT"
+        }
     }
 }
