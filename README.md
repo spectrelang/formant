@@ -6,7 +6,7 @@ Cross-platform UI library built on the <a href="https://spectrelang.org">Spectre
 
 #### MacOS (Tahoe)
 
-<img src="./.github/assets/formant-macos.png" style="width: 90%">
+<img src="./.github/assets/formant-macos.png" style="width: 80%">
 
 #### Linux (GTK 4)
 
