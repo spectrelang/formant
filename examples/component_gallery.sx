@@ -32,6 +32,7 @@ pub fn main() i32 = trust {
             return 1
         }
         ok f => {
+            formant.set_decorations(f, formant.Decorations.Custom)
             formant.header(f, "Component gallery", "Every component uses the active platform theme")
             formant.menu(f, "More")
             formant.menu_item(f, "reload", "Reload sample data")

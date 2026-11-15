@@ -1,4 +1,4 @@
-<form name="profile" title="Profile" width="820" height="780" theme="auto">
+<form name="profile" title="Profile" width="820" height="780" theme="auto" decorations="custom">
   <header title="Profile" subtitle="Manage your account">
     <button action="help" label="Help" variant="ghost" />
   </header>

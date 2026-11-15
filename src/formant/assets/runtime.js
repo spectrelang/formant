@@ -24,6 +24,41 @@
     return el.closest("form[data-fm-form]");
   }
 
+  function hasCustomDecorations() {
+    return document.documentElement.classList.contains("fm-custom-decorations");
+  }
+
+  function windowCall(action, arg) {
+    const fn = window.formant_window;
+    if (typeof fn !== "function") return Promise.resolve(null);
+    try {
+      return Promise.resolve(fn({ action: action, arg: arg == null ? 0 : arg }));
+    } catch (err) {
+      return Promise.resolve(null);
+    }
+  }
+
+  function syncMaximized(state) {
+    const maximized = state === true || state === "true";
+    const button = document.querySelector('[data-fm-window="maximize"]');
+    if (button) {
+      button.classList.toggle("fm-maximized", maximized);
+    }
+    document.documentElement.classList.toggle("fm-window-maximized", maximized);
+  }
+
+  function syncTitlebarHeight() {
+    const bar = document.querySelector(".fm-headerbar");
+    if (bar) {
+      windowCall("titlebar-height", Math.round(bar.getBoundingClientRect().height));
+    }
+  }
+
+  P.syncWindowState = function () {
+    if (!hasCustomDecorations()) return;
+    windowCall("state").then(syncMaximized);
+  };
+
   function collect(form) {
     const values = {};
     if (!form) return values;
@@ -214,6 +249,20 @@
   document.addEventListener("click", function (event) {
     const target = event.target;
 
+    const windowControl = target.closest("[data-fm-window]");
+    if (windowControl) {
+      event.preventDefault();
+      const action = windowControl.getAttribute("data-fm-window") || "";
+      if (action === "minimize") {
+        windowCall("minimize");
+      } else if (action === "maximize") {
+        windowCall("toggle-maximize").then(syncMaximized);
+      } else if (action === "close") {
+        windowCall("close");
+      }
+      return;
+    }
+
     const dialogClose = target.closest("[data-fm-close]");
     if (dialogClose) {
       event.preventDefault();
@@ -284,6 +333,34 @@
     }
   });
 
+  document.addEventListener("pointerdown", function (event) {
+    if (!hasCustomDecorations() || event.button !== 0) return;
+
+    const resize = event.target.closest("[data-fm-resize]");
+    if (resize) {
+      event.preventDefault();
+      windowCall("resize", Number(resize.getAttribute("data-fm-resize") || "0"));
+      return;
+    }
+
+    const bar = event.target.closest(".fm-headerbar");
+    if (!bar) return;
+    if (
+      event.target.closest(
+        "button, input, select, textarea, a, [data-fm-window], [data-fm-action], .fm-menu, .fm-menu-trigger",
+      )
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    if (event.detail >= 2) {
+      windowCall("toggle-maximize").then(syncMaximized);
+      return;
+    }
+    windowCall("move");
+  });
+
   document.addEventListener("input", function (event) {
     const el = event.target;
     if (!el || !el.name) return;
@@ -314,4 +391,19 @@
         openMenus[i].classList.remove("fm-open");
     }
   });
+
+  let windowStateTimer = 0;
+  window.addEventListener("resize", function () {
+    if (!hasCustomDecorations()) return;
+    syncTitlebarHeight();
+    window.clearTimeout(windowStateTimer);
+    windowStateTimer = window.setTimeout(function () {
+      P.syncWindowState();
+    }, 120);
+  });
+
+  if (hasCustomDecorations()) {
+    syncTitlebarHeight();
+    P.syncWindowState();
+  }
 })();

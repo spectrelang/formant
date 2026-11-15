@@ -47,7 +47,7 @@ test "xml parses attributes and entities" {
 test "ft maps a form tree" {
     trust {
         val arena = arena_or_die()
-        val src: str.StringView = \\<form name="contact" title="Contact" width="720" height="600" theme="linux">
+        val src: str.StringView = \\<form name="contact" title="Contact" width="720" height="600" theme="linux" decorations="custom">
 \\  <section title="Details">
 \\    <row>
 \\      <field name="first" label="First name" required="true" />
@@ -68,6 +68,7 @@ test "ft maps a form tree" {
                 assert @strcmp(root.name, c"contact") == 0
                 assert root.width == 720
                 assert root.height == 600
+                assert root.decorations == 1
                 assert root.first != none
                 assert @strcmp(root.first.title, c"Details") == 0
             }
@@ -91,7 +92,7 @@ test "html renderer escapes and emits controls" {
         match parsed {
             ok root => {
                 val n: ref node.Node = root as ref node.Node
-                val sb = html.render(n, c"Contact", 1)
+                val sb = html.render(n, c"Contact", 1, false)
                 val text: str.StringView = str.view(sb.ptr, sb.len)
                 assert str.contains(text, "data-fm-form")
                 assert str.contains(text, "type=\"email\"")
@@ -99,6 +100,13 @@ test "html renderer escapes and emits controls" {
                 assert str.contains(text, "fm-theme-linux")
                 assert str.contains(text, "formant_event")
                 builder.StringBuilder.free(sb)
+
+                val custom = html.render(n, c"Contact", 1, true)
+                val custom_text: str.StringView = str.view(custom.ptr, custom.len)
+                assert str.contains(custom_text, "fm-custom-decorations")
+                assert str.contains(custom_text, "data-fm-window=\"minimize\"")
+                assert str.contains(custom_text, "data-fm-resize=\"7\"")
+                builder.StringBuilder.free(custom)
             }
             err _ => {
                 assert false

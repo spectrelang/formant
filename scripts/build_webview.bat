@@ -16,6 +16,7 @@ if "%OUT%"=="" (
 set ROOT=%~dp0..
 set SRC=%ROOT%\lib\webview\core\src\webview.cc
 set INC=%ROOT%\lib\webview\core\include
+set WINDECOR=%ROOT%\src\formant\windecor_win.cc
 
 if not exist "%SRC%" (
     echo build_webview.bat: webview sources not found at %SRC% 1>&2
@@ -61,7 +62,11 @@ if defined WV2_INC set WV2_FLAG=-I"%WV2_INC%"
 clang++ -std=c++11 -O2 -DWEBVIEW_STATIC -I"%INC%" %WV2_FLAG% ^
     -c "%SRC%" -o "%OUT%\webview.o"
 if errorlevel 1 exit /b 1
+clang++ -std=c++11 -O2 ^
+    -c "%WINDECOR%" -o "%OUT%\windecor.o"
+if errorlevel 1 exit /b 1
 echo built %OUT%\webview.o
+echo built %OUT%\windecor.o
 exit /b 0
 
 :msvc
@@ -70,5 +75,9 @@ if defined WV2_INC set WV2_FLAG=/I"%WV2_INC%"
 cl /nologo /std:c++17 /O2 /EHsc /DWEBVIEW_STATIC /I"%INC%" %WV2_FLAG% ^
     /c "%SRC%" /Fo"%OUT%\webview.o"
 if errorlevel 1 exit /b 1
+cl /nologo /std:c++17 /O2 /EHsc ^
+    /c "%WINDECOR%" /Fo"%OUT%\windecor.o"
+if errorlevel 1 exit /b 1
 echo built %OUT%\webview.o
+echo built %OUT%\windecor.o
 exit /b 0

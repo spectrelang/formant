@@ -16,6 +16,7 @@ HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ROOT=$(dirname -- "$HERE")
 SRC="$ROOT/lib/webview/core/src/webview.cc"
 INC="$ROOT/lib/webview/core/include"
+WINDECOR="$ROOT/src/formant"
 
 if [ ! -f "$SRC" ]; then
     echo "build_webview.sh: webview sources not found at $SRC" >&2
@@ -41,6 +42,14 @@ case "$OS" in
     Darwin)
         "$CXX_BIN" -std=c++11 -O2 -fPIC -DWEBVIEW_STATIC \
             -I"$INC" -c "$SRC" -o "$OUT/webview.o"
+
+        if command -v clang >/dev/null 2>&1; then
+            OBJC_BIN=clang
+        else
+            OBJC_BIN=cc
+        fi
+        "$OBJC_BIN" -fobjc-arc -O2 -fPIC \
+            -c "$WINDECOR/windecor_mac.m" -o "$OUT/windecor.o"
         ;;
     *)
         if ! command -v pkg-config >/dev/null 2>&1; then
@@ -59,7 +68,12 @@ case "$OS" in
         # shellcheck disable=SC2086
         "$CXX_BIN" -std=c++11 -O2 -fPIC -DWEBVIEW_STATIC \
             -I"$INC" $CFLAGS -c "$SRC" -o "$OUT/webview.o"
+
+        # shellcheck disable=SC2086
+        "$CXX_BIN" -std=c++11 -O2 -fPIC $CFLAGS \
+            -c "$WINDECOR/windecor_gtk.cc" -o "$OUT/windecor.o"
         ;;
 esac
 
 echo "built $OUT/webview.o"
+echo "built $OUT/windecor.o"

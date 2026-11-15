@@ -667,6 +667,15 @@
   outline-offset: -2px;
 }
 
+.fm-theme-linux .fm-window-controls {
+  margin-left: 12px;
+}
+
+.fm-theme-linux .fm-window-btn {
+  width: 30px;
+  height: 30px;
+}
+
 .fm-theme-linux .fm-toasts {
   right: auto;
   bottom: 0;

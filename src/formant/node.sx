@@ -107,6 +107,7 @@ pub type Node = {
     width: mut i32
     height: mut i32
     theme: mut i32
+    decorations: mut i32
 }
 
 pub fn new(b: ref mem.Bump, kind: Kind) ref Node = trust {
@@ -150,6 +151,7 @@ pub fn new(b: ref mem.Bump, kind: Kind) ref Node = trust {
             n.width = 0
             n.height = 0
             n.theme = 0
+            n.decorations = 0
             return n as ref Node
         }
         none => {

@@ -15,12 +15,18 @@ val node       = use("node.sx")
 val stdio      = use("std/stdio")
 val str        = use("std/string")
 val webview    = use("webview.sx")
+val win        = use("win.sx")
 
 pub enum Theme = {
     Auto
     Linux
     Darwin
     Windows
+}
+
+pub enum Decorations = {
+    System
+    Custom
 }
 
 pub enum UiErrorKind = {
@@ -69,6 +75,7 @@ pub type Form = {
     width: mut i32
     height: mut i32
     theme: mut i32
+    decorations: mut i32
     debug: mut bool
 }
 
@@ -105,6 +112,7 @@ fn alloc_form() mut ref Form = trust {
     f.title = c""
     f.name = c""
     f.theme = 0
+    f.decorations = 0
     f.debug = false
     return f as mut ref Form
 }
@@ -154,6 +162,7 @@ pub fn new_form(
     f.width = width
     f.height = height
     f.theme = 0
+    f.decorations = 0
     return ok f
 }
 
@@ -210,6 +219,7 @@ pub fn new_from_ft(
             f.title = mr.title
             f.name = mr.name
             f.theme = mr.theme
+            f.decorations = mr.decorations
             f.width = width
             f.height = height
             if f.width <= 0 {
@@ -267,6 +277,12 @@ pub fn set_size(f: mut ref Form, width: i32, height: i32) void = {
 
 pub fn set_theme(f: mut ref Form, theme: Theme) void = {
     f.theme = theme as i32
+}
+
+/// Requests client-drawn window decorations. Unsupported platforms keep the
+/// native window frame.
+pub fn set_decorations(f: mut ref Form, decorations: Decorations) void = {
+    f.decorations = decorations as i32
 }
 
 pub fn name(f: mut ref Form, value: str.StringView) void = trust {
@@ -874,6 +890,72 @@ fn on_binding(id: ref u8, req: ref u8, arg: ref void) void = trust {
     }
 }
 
+fn on_window_binding(id: ref u8, req: ref u8, arg: ref void) void = trust {
+    val f: mut ref Form = arg as ref Form
+    val maximized: mut bool = false
+    if f != none && f.wv != none && req != none {
+        val parsed = json.parse(str.from_cstr(req))
+        match parsed {
+            err _ => {}
+            ok doc => {
+                val root = json.root(doc)
+                val payload = json.array_get(root, 0)
+                match payload {
+                    none => {}
+                    some p => {
+                        val action_opt = json.object_get_str(p, "action")
+                        val action: mut str.StringView = empty()
+                        if action_opt is some value {
+                            action = value
+                        }
+                        val native: mut ref void = webview.get_window(f.wv)
+                        if native != none {
+                            if str.eql_cstr(action, c"minimize") {
+                                win.minimize(native)
+                            } elif str.eql_cstr(action, c"close") {
+                                win.close_window(native)
+                            } elif str.eql_cstr(action, c"move") {
+                                win.begin_move(native)
+                            } elif str.eql_cstr(action, c"resize") {
+                                val edge: mut i32 = 0
+                                match json.object_get_int(p, "arg") {
+                                    some value => {
+                                        edge = value as i32
+                                    }
+                                    none => {}
+                                }
+                                win.begin_resize(native, edge)
+                            } elif str.eql_cstr(action, c"toggle-maximize") {
+                                win.toggle_maximize(native)
+                                maximized = win.is_maximized(native) != 0
+                            } elif str.eql_cstr(action, c"state") {
+                                maximized = win.is_maximized(native) != 0
+                            } elif str.eql_cstr(action, c"titlebar-height") {
+                                val height: mut i32 = 0
+                                match json.object_get_int(p, "arg") {
+                                    some value => {
+                                        height = value as i32
+                                    }
+                                    none => {}
+                                }
+                                win.set_titlebar_height(native, height)
+                            }
+                        }
+                    }
+                }
+                json.doc_free(doc)
+            }
+        }
+    }
+    if f != none && f.wv != none {
+        if maximized {
+            webview.webview_return(f.wv, id, 0, c"true")
+        } else {
+            webview.webview_return(f.wv, id, 0, c"false")
+        }
+    }
+}
+
 pub fn value(v: Values, field_name: str.StringView) str.StringView = trust {
     if !v.valid {
         return empty()
@@ -1167,10 +1249,22 @@ pub fn run_with(f: mut ref Form, debug: bool) i32 = trust {
     }
 
     webview.set_title(f.wv, f.title)
-    webview.set_size(f.wv, f.width, f.height, webview.HINT_NONE)
-    webview.bind(f.wv, c"formant_event", on_binding, f as ref void)
 
-    val doc = html_mod.render(f.root, f.title, f.theme)
+    val native: mut ref void = webview.get_window(f.wv)
+    val custom: mut bool = false
+    if f.decorations == Decorations.Custom as i32 && native != none {
+        if win.supports_custom(native) != 0 {
+            win.set_decorated(native, 0)
+            custom = true
+        }
+    }
+
+    webview.set_size(f.wv, f.width, f.height, webview.HINT_NONE)
+
+    webview.bind(f.wv, c"formant_event", on_binding, f as ref void)
+    webview.bind(f.wv, c"formant_window", on_window_binding, f as ref void)
+
+    val doc = html_mod.render(f.root, f.title, f.theme, custom)
     webview.set_html(f.wv, doc.ptr)
     builder.StringBuilder.free(doc)
 

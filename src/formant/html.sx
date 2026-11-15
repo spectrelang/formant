@@ -510,6 +510,33 @@ fn render_button(sb: builder.StringBuilder, n: ref node.Node) void = trust {
     builder.StringBuilder.append_cstr(sb, c"</button>")
 }
 
+fn render_window_controls(sb: builder.StringBuilder) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-window-controls\">")
+    builder.StringBuilder.append_cstr(sb, c"<button type=\"button\" class=\"fm-window-btn fm-window-minimize\" data-fm-window=\"minimize\" aria-label=\"Minimize\" title=\"Minimize\"><span aria-hidden=\"true\"></span></button>")
+    builder.StringBuilder.append_cstr(sb, c"<button type=\"button\" class=\"fm-window-btn fm-window-maximize\" data-fm-window=\"maximize\" aria-label=\"Maximize\" title=\"Maximize\"><span aria-hidden=\"true\"></span></button>")
+    builder.StringBuilder.append_cstr(sb, c"<button type=\"button\" class=\"fm-window-btn fm-window-close\" data-fm-window=\"close\" aria-label=\"Close\" title=\"Close\"><span aria-hidden=\"true\"></span></button>")
+    builder.StringBuilder.append_cstr(sb, c"</div>")
+}
+
+fn render_resize_handles(sb: builder.StringBuilder) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-n\" data-fm-resize=\"0\"></div>")
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-s\" data-fm-resize=\"1\"></div>")
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-w\" data-fm-resize=\"2\"></div>")
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-e\" data-fm-resize=\"3\"></div>")
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-nw\" data-fm-resize=\"4\"></div>")
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-ne\" data-fm-resize=\"5\"></div>")
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-sw\" data-fm-resize=\"6\"></div>")
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-se\" data-fm-resize=\"7\"></div>")
+}
+
+fn render_default_titlebar(sb: builder.StringBuilder, title: ref u8) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<header class=\"fm-headerbar\"><div class=\"fm-headerbar-title\"><span class=\"fm-title\">")
+    escape_cstr_into(sb, title)
+    builder.StringBuilder.append_cstr(sb, c"</span></div><div class=\"fm-headerbar-actions\">")
+    render_window_controls(sb)
+    builder.StringBuilder.append_cstr(sb, c"</div></header>")
+}
+
 fn render_header(sb: builder.StringBuilder, n: ref node.Node) void = trust {
     builder.StringBuilder.append_cstr(sb, c"<header class=\"fm-headerbar\">")
     builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-headerbar-title\">")
@@ -533,6 +560,7 @@ fn render_header(sb: builder.StringBuilder, n: ref node.Node) void = trust {
         render_node(sb, cur as ref node.Node)
         cur = cur.next
     }
+    render_window_controls(sb)
     builder.StringBuilder.append_cstr(sb, c"</div></header>")
 }
 
@@ -800,7 +828,8 @@ fn effective_theme(theme: i32) i32 = {
 pub fn render(
     root: ref node.Node,
     title: ref u8,
-    theme: i32
+    theme: i32,
+    custom_decorations: bool
 ) builder.StringBuilder = trust {
     val sb = builder.StringBuilder.new()
     val th: i32 = effective_theme(theme)
@@ -808,6 +837,9 @@ pub fn render(
     builder.StringBuilder.append(sb, theme_class(th))
     builder.StringBuilder.append_cstr(sb, c" ")
     builder.StringBuilder.append(sb, platform_class(th))
+    if custom_decorations {
+        builder.StringBuilder.append_cstr(sb, c" fm-custom-decorations")
+    }
     builder.StringBuilder.append_cstr(sb, c"\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"color-scheme\" content=\"light dark\"><title>")
     escape_cstr_into(sb, title)
     builder.StringBuilder.append_cstr(sb, c"</title><style>")
@@ -818,6 +850,8 @@ pub fn render(
     if root.first != none && root.first.kind == node.Kind.Header {
         header = root.first
         render_header(sb, header as ref node.Node)
+    } elif custom_decorations {
+        render_default_titlebar(sb, title)
     }
 
     builder.StringBuilder.append_cstr(sb, c"<main class=\"fm-main\"><form class=\"fm-form\" data-fm-form")
@@ -852,7 +886,11 @@ pub fn render(
     }
 
     builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-busy-overlay\"><div class=\"fm-spinner\"></div></div>")
-    builder.StringBuilder.append_cstr(sb, c"</form></main></div><div class=\"fm-toasts\"></div>")
+    builder.StringBuilder.append_cstr(sb, c"</form></main></div>")
+    if custom_decorations {
+        render_resize_handles(sb)
+    }
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-toasts\"></div>")
     builder.StringBuilder.append_cstr(sb, c"<script>")
     builder.StringBuilder.append(sb, assets.runtime_js())
     builder.StringBuilder.append_cstr(sb, c"</script></body></html>")

@@ -189,3 +189,31 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23c7c7c7' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
 }
+
+.fm-theme-windows .fm-window-controls {
+  gap: 0;
+  margin-left: 10px;
+}
+
+.fm-theme-windows .fm-window-btn {
+  width: 46px;
+  height: 32px;
+  border-radius: 0;
+  color: var(--fm-text);
+}
+
+.fm-theme-windows .fm-window-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--fm-text);
+}
+
+.fm-theme-windows .fm-window-close:hover {
+  background: #c42b1c;
+  color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .fm-theme-windows .fm-window-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
