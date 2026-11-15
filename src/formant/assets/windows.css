@@ -1,0 +1,191 @@
+/* Windows 11 Fluent-inspired theme. */
+
+.fm-theme-windows {
+  --fm-font: "Segoe UI Variable Text", "Segoe UI", "Inter", system-ui, sans-serif;
+  --fm-font-size: 14px;
+  --fm-line-height: 1.45;
+  --fm-bg: #f3f3f3;
+  --fm-surface: #ffffff;
+  --fm-surface-2: #f9f9f9;
+  --fm-surface-3: #ebebeb;
+  --fm-text: #1b1b1b;
+  --fm-muted: #5d5d5d;
+  --fm-border: #e5e5e5;
+  --fm-border-strong: #d1d1d1;
+  --fm-accent: #0067c0;
+  --fm-accent-hover: #1975c5;
+  --fm-accent-fg: #ffffff;
+  --fm-radius: 4px;
+  --fm-radius-lg: 8px;
+  --fm-control-h: 32px;
+  --fm-btn-h: 32px;
+  --fm-gap: 16px;
+  --fm-header-h: 48px;
+  --fm-header-bg: #f3f3f3;
+  --fm-header-border: #e1e1e1;
+  --fm-input-bg: #ffffff;
+  --fm-btn-bg: #fdfdfd;
+  --fm-btn-hover: #f7f7f7;
+  --fm-btn-active: #efefef;
+  --fm-btn-border: #d6d6d6;
+  --fm-focus: 0 0 0 2px rgba(0, 103, 192, 0.3);
+  --fm-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --fm-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.22);
+}
+
+.fm-theme-windows .fm-headerbar {
+  border-bottom-color: var(--fm-header-border);
+}
+
+.fm-theme-windows .fm-headerbar-title .fm-title {
+  font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.fm-theme-windows .fm-section {
+  border-color: #e8e8e8;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.fm-theme-windows .fm-label {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.fm-theme-windows .fm-input,
+.fm-theme-windows .fm-textarea,
+.fm-theme-windows .fm-select {
+  border: 1px solid var(--fm-border-strong);
+  border-bottom: 1px solid #8a8a8a;
+  border-radius: 4px 4px 2px 2px;
+  padding: 4px 9px;
+}
+
+.fm-theme-windows .fm-input:hover,
+.fm-theme-windows .fm-textarea:hover,
+.fm-theme-windows .fm-select:hover {
+  background: #fbfbfb;
+}
+
+.fm-theme-windows .fm-input:focus,
+.fm-theme-windows .fm-textarea:focus,
+.fm-theme-windows .fm-select:focus {
+  border-bottom: 2px solid var(--fm-accent);
+  padding-bottom: 3px;
+  box-shadow: none;
+}
+
+.fm-theme-windows .fm-btn {
+  border: 1px solid var(--fm-btn-border);
+  border-bottom-color: #b8b8b8;
+  box-shadow: none;
+  font-weight: 400;
+  padding: 4px 15px;
+}
+
+.fm-theme-windows .fm-btn:hover {
+  background: #f7f7f7;
+}
+
+.fm-theme-windows .fm-btn:active {
+  background: #efefef;
+  border-bottom-color: var(--fm-btn-border);
+  transform: none;
+}
+
+.fm-theme-windows .fm-btn-primary {
+  border-color: #0067c0;
+  border-bottom-color: #005ba8;
+  font-weight: 600;
+}
+
+.fm-theme-windows .fm-btn-danger {
+  border-bottom-color: #a51f2b;
+}
+
+.fm-theme-windows .fm-section-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fm-theme-windows .fm-tablist {
+  border-bottom-color: #e1e1e1;
+}
+
+.fm-theme-windows .fm-tab {
+  border-radius: 4px 4px 0 0;
+  font-weight: 400;
+}
+
+.fm-theme-windows .fm-tab.fm-active {
+  font-weight: 600;
+}
+
+.fm-theme-windows .fm-table th {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  background: #f9f9f9;
+}
+
+.fm-theme-windows .fm-dialog {
+  border-radius: 8px;
+}
+
+.fm-theme-windows .fm-toast {
+  border-radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .fm-theme-windows {
+    --fm-bg: #202020;
+    --fm-surface: #2b2b2b;
+    --fm-surface-2: #323232;
+    --fm-surface-3: #3a3a3a;
+    --fm-text: #ffffff;
+    --fm-muted: #c7c7c7;
+    --fm-border: #3a3a3a;
+    --fm-border-strong: #4a4a4a;
+    --fm-accent: #4cc2ff;
+    --fm-accent-hover: #5fc9ff;
+    --fm-accent-fg: #00243d;
+    --fm-header-bg: #202020;
+    --fm-header-border: #1a1a1a;
+    --fm-input-bg: #2b2b2b;
+    --fm-btn-bg: #2d2d2d;
+    --fm-btn-hover: #363636;
+    --fm-btn-active: #3d3d3d;
+    --fm-btn-border: #4a4a4a;
+    --fm-focus: 0 0 0 2px rgba(76, 194, 255, 0.3);
+  }
+
+  .fm-theme-windows .fm-input,
+  .fm-theme-windows .fm-textarea,
+  .fm-theme-windows .fm-select {
+    border-bottom-color: #6a6a6a;
+  }
+
+  .fm-theme-windows .fm-input:hover,
+  .fm-theme-windows .fm-textarea:hover,
+  .fm-theme-windows .fm-select:hover {
+    background: #303030;
+  }
+
+  .fm-theme-windows .fm-btn {
+    border-bottom-color: #5a5a5a;
+  }
+
+  .fm-theme-windows .fm-btn-primary {
+    border-color: #4cc2ff;
+    border-bottom-color: #3aa8e0;
+  }
+
+  .fm-theme-windows .fm-table th {
+    background: #323232;
+  }
+
+  .fm-theme-windows .fm-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23c7c7c7' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+}

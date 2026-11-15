@@ -1,0 +1,79 @@
+/// A tiny bump allocator owned by Formant.
+
+val str = use("std/string")
+
+pub type Bump = {
+    buf: mut ref u8
+    cap: mut usize
+    used: mut usize
+}
+
+pub fn new(capacity: usize) mut ref Bump = trust {
+    val b: mut ref Bump = @alloc(@sizeof(Bump) as usize) as mut ref Bump
+    if b == none {
+        return none
+    }
+    @memset(b as ref void, 0, @sizeof(Bump) as usize)
+    val cap: mut usize = capacity
+    if cap == 0 {
+        cap = 4096 as usize
+    }
+    val buf: ref u8 = @alloc(cap) as ref u8
+    if buf == none {
+        @free(b as ref void)
+        return none
+    }
+    b.buf = buf
+    b.cap = cap
+    b.used = 0
+    return b as mut ref Bump
+}
+
+pub fn alloc(b: ref Bump, size: usize) option[ref u8] = trust {
+    if b == none || size == 0 {
+        return none
+    }
+    val mb: mut ref Bump = b as mut ref Bump
+    val aligned: usize = ((size + 7) / 8) * 8
+    if mb.used + aligned > mb.cap {
+        return none
+    }
+    val out: ref u8 = @ptradd(mb.buf, mb.used as i64) as ref u8
+    mb.used = mb.used + aligned
+    return some out
+}
+
+pub fn strdup(b: ref Bump, s: str.StringView) ref u8 = trust {
+    if s.len <= 0 {
+        return c""
+    }
+    val allocated = alloc(b, (s.len + 1) as usize)
+    match allocated {
+        some raw => {
+            val out: ref u8 = raw as ref u8
+            @memcpy(out as ref void, s.ptr as ref void, s.len as usize)
+            @store8(@ptradd(out, s.len), 0)
+            return out
+        }
+        none => {
+            return c""
+        }
+    }
+}
+
+pub fn free(b: ref Bump) void = trust {
+    if b == none {
+        return
+    }
+    if b.buf != none {
+        @free(b.buf as ref void)
+    }
+    @free(b as ref void)
+}
+
+pub fn used(b: ref Bump) usize = {
+    if b == none {
+        return 0
+    }
+    return b.used
+}

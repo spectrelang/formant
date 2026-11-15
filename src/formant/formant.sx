@@ -1,0 +1,1167 @@
+/// Formant: a small cross-platform form UI library.
+///
+/// Forms can be assembled with ordinary function calls or loaded from a .ft
+/// XML template. Both produce the same retained node tree, which is rendered
+/// once into a webview document and styled with the host platform's design
+/// language.
+
+val mem        = use("mem.sx")
+val builder    = use("std/string/builder")
+val fs         = use("std/fs")
+val ft_mod     = use("ft.sx")
+val html_mod   = use("html.sx")
+val json       = use("std/json")
+val node       = use("node.sx")
+val stdio      = use("std/stdio")
+val str        = use("std/string")
+val webview    = use("webview.sx")
+
+pub enum Theme = {
+    Auto
+    Linux
+    Darwin
+    Windows
+}
+
+pub enum UiErrorKind = {
+    OutOfMemory
+    Io
+    Template
+}
+
+pub type UiError = {
+    kind: UiErrorKind
+    line: i32
+    message: str.StringView
+}
+
+pub type Values = {
+    doc: json.JsonDoc
+    valid: bool
+}
+
+pub type Event = {
+    kind: str.StringView
+    name: str.StringView
+    values: Values
+    form: ref Form
+}
+
+type Handler = {
+    event: mut ref u8
+    name: mut ref u8
+    fnaddr: mut usize
+    user: mut ref void
+    next: mut ref Handler
+}
+
+pub type Form = {
+    wv: mut ref void
+    arena: mut ref mem.Bump
+    root: mut ref node.Node
+    cursor: mut ref node.Node
+    last_node: mut ref node.Node
+    last_field: mut ref node.Node
+    table: mut ref node.Node
+    handlers: mut ref Handler
+    title: mut ref u8
+    name: mut ref u8
+    width: mut i32
+    height: mut i32
+    theme: mut i32
+    debug: mut bool
+}
+
+fn empty() str.StringView = {
+    return str.view(c"", 0)
+}
+
+fn arena_str(b: ref mem.Bump, s: str.StringView) ref u8 = trust {
+    return node.strdup(b, s)
+}
+
+fn heap_str(s: str.StringView) ref u8 = trust {
+    if s.len <= 0 {
+        return c""
+    }
+    val out: ref u8 = @alloc((s.len + 1) as usize) as ref u8
+    if out == none {
+        return c""
+    }
+    @memcpy(out as ref void, s.ptr as ref void, s.len as usize)
+    @store8(@ptradd(out, s.len), 0)
+    return out
+}
+
+fn alloc_form() mut ref Form = trust {
+    val raw: ref void = @alloc(@sizeof(Form) as usize)
+    if raw == none {
+        return none
+    }
+    val f: mut ref Form = raw as mut ref Form
+    @memset(f as ref void, 0, @sizeof(Form) as usize)
+    f.wv = none
+    f.handlers = none
+    f.title = c""
+    f.name = c""
+    f.theme = 0
+    f.debug = false
+    return f as mut ref Form
+}
+
+fn oom() UiError = {
+    return UiError{
+        kind: UiErrorKind.OutOfMemory
+        line: 0
+        message: "out of memory"
+    }
+}
+
+pub fn new_form(
+    title: str.StringView,
+    width: i32,
+    height: i32
+) result[mut ref Form, UiError] = trust {
+    val arena: mut ref mem.Bump = mem.new(1048576 as usize)
+    if arena == none {
+        return err oom()
+    }
+
+    val root: ref node.Node = node.new(arena, node.Kind.Form)
+    if root == none {
+        mem.free(arena)
+        return err oom()
+    }
+    val mr: mut ref node.Node = root as mut ref node.Node
+    mr.name = arena_str(arena, "form")
+    mr.title = arena_str(arena, title)
+    mr.width = width
+    mr.height = height
+
+    val f: mut ref Form = alloc_form()
+    if f == none {
+        mem.free(arena)
+        return err oom()
+    }
+    f.arena = arena
+    f.root = root
+    f.cursor = root
+    f.last_node = root
+    f.last_field = none
+    f.table = none
+    f.title = mr.title
+    f.name = mr.name
+    f.width = width
+    f.height = height
+    f.theme = 0
+    return ok f
+}
+
+pub fn new_from_ft(
+    path: str.StringView,
+    width: i32,
+    height: i32
+) result[mut ref Form, UiError] = trust {
+    val arena: mut ref mem.Bump = mem.new(2097152 as usize)
+    if arena == none {
+        return err oom()
+    }
+
+    val file_opt = fs.read_all_heap(path)
+    val file: mut ref u8 = none
+    match file_opt {
+        some data => {
+            file = data
+        }
+        none => {
+            mem.free(arena)
+            return err UiError{
+                kind: UiErrorKind.Io
+                line: 0
+                message: "cannot read template file"
+            }
+        }
+    }
+    val source: str.StringView = str.from_cstr(file)
+    val parsed = ft_mod.parse(arena, source)
+    @free(file as ref void)
+    match parsed {
+        err e => {
+            mem.free(arena)
+            return err UiError{
+                kind: UiErrorKind.Template
+                line: e.line
+                message: e.message
+            }
+        }
+        ok root => {
+            val mr: ref node.Node = root as ref node.Node
+            val f: mut ref Form = alloc_form()
+            if f == none {
+                mem.free(arena)
+                return err oom()
+            }
+            f.arena = arena
+            f.root = root
+            f.cursor = root
+            f.last_node = root
+            f.last_field = none
+            f.table = none
+            f.title = mr.title
+            f.name = mr.name
+            f.theme = mr.theme
+            f.width = width
+            f.height = height
+            if f.width <= 0 {
+                f.width = mr.width
+            }
+            if f.height <= 0 {
+                f.height = mr.height
+            }
+            if f.width <= 0 {
+                f.width = 860
+            }
+            if f.height <= 0 {
+                f.height = 720
+            }
+            return ok f
+        }
+    }
+}
+
+pub fn free(f: ref Form) void = trust {
+    if f == none {
+        return
+    }
+    val cur: mut ref Handler = f.handlers
+    for {
+        if cur == none {
+            break
+        }
+        val h: ref Handler = cur as ref Handler
+        if h.event != none && h.event != c"" {
+            @free(h.event as ref void)
+        }
+        if h.name != none && h.name != c"" {
+            @free(h.name as ref void)
+        }
+        cur = h.next
+        @free(h as ref void)
+    }
+    if f.arena != none {
+        mem.free(f.arena)
+    }
+    @free(f as ref void)
+}
+
+pub fn set_title(f: mut ref Form, title: str.StringView) void = trust {
+    f.title = arena_str(f.arena, title)
+    val r: mut ref node.Node = f.root as mut ref node.Node
+    r.title = f.title
+}
+
+pub fn set_size(f: mut ref Form, width: i32, height: i32) void = {
+    f.width = width
+    f.height = height
+}
+
+pub fn set_theme(f: mut ref Form, theme: Theme) void = {
+    f.theme = theme as i32
+}
+
+pub fn name(f: mut ref Form, value: str.StringView) void = trust {
+    f.name = arena_str(f.arena, value)
+    val r: mut ref node.Node = f.root as mut ref node.Node
+    r.name = f.name
+}
+
+fn add(f: mut ref Form, n: ref node.Node) void = {
+    if n == none || f.cursor == none {
+        return
+    }
+    node.append(f.cursor, n)
+    f.last_node = n
+}
+
+pub fn header(f: mut ref Form, title: str.StringView, subtitle: str.StringView) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Header)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    mn.title = arena_str(f.arena, title)
+    mn.subtitle = arena_str(f.arena, subtitle)
+    add(f, n)
+    f.cursor = n
+}
+
+pub fn section(f: mut ref Form, title: str.StringView, desc: str.StringView) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Section)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    mn.title = arena_str(f.arena, title)
+    mn.subtitle = arena_str(f.arena, desc)
+    add(f, n)
+    f.cursor = n
+}
+
+pub fn row(f: mut ref Form) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Row)
+    add(f, n)
+    if n != none {
+        f.cursor = n
+    }
+}
+
+pub fn actions(f: mut ref Form) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Actions)
+    add(f, n)
+    if n != none {
+        f.cursor = n
+    }
+}
+
+pub fn end(f: mut ref Form) void = {
+    if f.cursor == none {
+        return
+    }
+    if f.cursor.parent != none {
+        f.cursor = f.cursor.parent
+    }
+}
+
+fn field_base(
+    f: mut ref Form,
+    kind: node.FieldKind,
+    field_name: str.StringView,
+    label: str.StringView
+) ref node.Node = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Field)
+    if n == none {
+        return none
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    mn.field = kind
+    mn.name = arena_str(f.arena, field_name)
+    mn.label = arena_str(f.arena, label)
+    add(f, n)
+    f.last_field = n
+    return n
+}
+
+pub fn text_input(f: mut ref Form, field_name: str.StringView, label: str.StringView) void = trust {
+    val n = field_base(f, node.FieldKind.Text, field_name, label)
+    if n != none {
+        f.last_field = n
+    }
+}
+
+pub fn email_input(f: mut ref Form, field_name: str.StringView, label: str.StringView) void = trust {
+    val n = field_base(f, node.FieldKind.Email, field_name, label)
+    if n != none {
+        f.last_field = n
+    }
+}
+
+pub fn password_input(f: mut ref Form, field_name: str.StringView, label: str.StringView) void = trust {
+    val n = field_base(f, node.FieldKind.Password, field_name, label)
+    if n != none {
+        f.last_field = n
+    }
+}
+
+pub fn number_input(f: mut ref Form, field_name: str.StringView, label: str.StringView) void = trust {
+    val n = field_base(f, node.FieldKind.Number, field_name, label)
+    if n != none {
+        f.last_field = n
+    }
+}
+
+pub fn textarea(f: mut ref Form, field_name: str.StringView, label: str.StringView, rows: i32) void = trust {
+    val n = field_base(f, node.FieldKind.Textarea, field_name, label)
+    if n != none {
+        val mn: mut ref node.Node = n as mut ref node.Node
+        val buf: mut [32]u8 = @zeroed
+        @snprintf(@addr(buf) as ref u8, 32, "{d}", {rows as i64})
+        mn.rows = arena_str(f.arena, str.from_cstr(@addr(buf) as ref u8))
+        f.last_field = n
+    }
+}
+
+pub fn select(
+    f: mut ref Form,
+    field_name: str.StringView,
+    label: str.StringView,
+    options: str.StringView
+) void = trust {
+    val n = field_base(f, node.FieldKind.Select, field_name, label)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    add_option_spec(f.arena, mn, options)
+    f.last_field = n
+}
+
+pub fn radio(
+    f: mut ref Form,
+    field_name: str.StringView,
+    label: str.StringView,
+    options: str.StringView
+) void = trust {
+    val n = field_base(f, node.FieldKind.Radio, field_name, label)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    add_option_spec(f.arena, mn, options)
+    f.last_field = n
+}
+
+pub fn checkbox(f: mut ref Form, field_name: str.StringView, label: str.StringView) void = trust {
+    val n = field_base(f, node.FieldKind.Checkbox, field_name, label)
+    if n != none {
+        f.last_field = n
+    }
+}
+
+pub fn range(
+    f: mut ref Form,
+    field_name: str.StringView,
+    label: str.StringView,
+    min_value: i32,
+    max_value: i32,
+    value: i32
+) void = trust {
+    val n = field_base(f, node.FieldKind.Range, field_name, label)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    val buf: mut [64]u8 = @zeroed
+    @snprintf(@addr(buf) as ref u8, 64, "{d}", {min_value as i64})
+    mn.min = arena_str(f.arena, str.from_cstr(@addr(buf) as ref u8))
+    @snprintf(@addr(buf) as ref u8, 64, "{d}", {max_value as i64})
+    mn.max = arena_str(f.arena, str.from_cstr(@addr(buf) as ref u8))
+    @snprintf(@addr(buf) as ref u8, 64, "{d}", {value as i64})
+    mn.value = arena_str(f.arena, str.from_cstr(@addr(buf) as ref u8))
+    f.last_field = n
+}
+
+pub fn add_option(f: mut ref Form, value: str.StringView, label: str.StringView) void = trust {
+    if f.last_field == none {
+        return
+    }
+    val n: mut ref node.Node = f.last_field as mut ref node.Node
+    node.option_add(f.arena, n, value, label)
+    f.last_node = f.last_field
+}
+
+fn add_option_spec(
+    b: ref mem.Bump,
+    n: mut ref node.Node,
+    options: str.StringView
+) void = trust {
+    if options.len <= 0 {
+        return
+    }
+    val start: mut i64 = 0
+    val i: mut i64 = 0
+    for {
+        val at_end: bool = i >= options.len
+        val c: mut u8 = 0
+        if !at_end {
+            c = @load8(@ptradd(options.ptr, i)) as u8
+        }
+        if at_end || c == 124 || c == 59 {
+            if i > start {
+                val item: str.StringView = str.slice(options, start, i)
+                val colon = str.find(item, ":")
+                if colon is some at {
+                    node.option_add(
+                        b,
+                        n,
+                        str.slice(item, 0, at),
+                        str.slice(item, at + 1, item.len)
+                    )
+                } else {
+                    node.option_add(b, n, item, item)
+                }
+            }
+            start = i + 1
+        }
+        if at_end {
+            break
+        }
+        i++
+    }
+}
+
+pub fn button(
+    f: mut ref Form,
+    action_name: str.StringView,
+    label: str.StringView,
+    style: i32
+) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Button)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    mn.name = arena_str(f.arena, action_name)
+    mn.label = arena_str(f.arena, label)
+    if style == 1 {
+        mn.variant = node.Variant.Primary
+    } elif style == 2 {
+        mn.variant = node.Variant.Danger
+    } elif style == 3 {
+        mn.variant = node.Variant.Ghost
+    } elif style == 4 {
+        mn.variant = node.Variant.Link
+    }
+    add(f, n)
+}
+
+pub fn submit_button(f: mut ref Form, action_name: str.StringView, label: str.StringView) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Button)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    mn.name = arena_str(f.arena, action_name)
+    mn.label = arena_str(f.arena, label)
+    mn.variant = node.Variant.Primary
+    mn.submit = true
+    add(f, n)
+}
+
+pub fn text(f: mut ref Form, body: str.StringView) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Text)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    mn.text = arena_str(f.arena, body)
+    add(f, n)
+}
+
+pub fn badge(f: mut ref Form, body: str.StringView) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Badge)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    mn.text = arena_str(f.arena, body)
+    add(f, n)
+}
+
+pub fn divider(f: mut ref Form) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Divider)
+    add(f, n)
+}
+
+pub fn spacer(f: mut ref Form) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Spacer)
+    add(f, n)
+}
+
+pub fn progress(f: mut ref Form, label: str.StringView, value: i32, max_value: i32) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Progress)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    mn.label = arena_str(f.arena, label)
+    val buf: mut [64]u8 = @zeroed
+    @snprintf(@addr(buf) as ref u8, 64, "{d}", {value as i64})
+    mn.value = arena_str(f.arena, str.from_cstr(@addr(buf) as ref u8))
+    @snprintf(@addr(buf) as ref u8, 64, "{d}", {max_value as i64})
+    mn.max = arena_str(f.arena, str.from_cstr(@addr(buf) as ref u8))
+    add(f, n)
+}
+
+pub fn table(f: mut ref Form, columns: str.StringView) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Table)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    add_option_spec(f.arena, mn, columns)
+    add(f, n)
+    f.cursor = n
+    f.table = n
+}
+
+pub fn table_row(f: mut ref Form, cells: str.StringView) void = trust {
+    if f.table == none {
+        return
+    }
+    val row_node: ref node.Node = node.new(f.arena, node.Kind.TableRow)
+    if row_node == none {
+        return
+    }
+    val mr: mut ref node.Node = row_node as mut ref node.Node
+    val start: mut i64 = 0
+    val i: mut i64 = 0
+    for {
+        val at_end: bool = i >= cells.len
+        val c: mut u8 = 0
+        if !at_end {
+            c = @load8(@ptradd(cells.ptr, i)) as u8
+        }
+        if at_end || c == 124 {
+            val cell: ref node.Node = node.new(f.arena, node.Kind.Cell)
+            if cell != none {
+                val mc: mut ref node.Node = cell as mut ref node.Node
+                val item: str.StringView = str.trim(str.slice(cells, start, i))
+                mc.text = arena_str(f.arena, item)
+                node.append(mr, cell)
+            }
+            start = i + 1
+        }
+        if at_end {
+            break
+        }
+        i++
+    }
+    node.append(f.table as mut ref node.Node, row_node)
+}
+
+pub fn tabs(f: mut ref Form) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Tabs)
+    add(f, n)
+    if n != none {
+        f.cursor = n
+    }
+}
+
+pub fn tab(f: mut ref Form, label: str.StringView) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Tab)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    mn.label = arena_str(f.arena, label)
+    add(f, n)
+    f.cursor = n
+}
+
+pub fn dialog(f: mut ref Form, id: str.StringView, title: str.StringView) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Dialog)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    mn.id = arena_str(f.arena, id)
+    mn.title = arena_str(f.arena, title)
+    add(f, n)
+    f.cursor = n
+}
+
+pub fn menu(f: mut ref Form, label: str.StringView) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.Menu)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    mn.label = arena_str(f.arena, label)
+    add(f, n)
+    f.cursor = n
+}
+
+pub fn menu_item(f: mut ref Form, action_name: str.StringView, label: str.StringView) void = trust {
+    val n: ref node.Node = node.new(f.arena, node.Kind.MenuItem)
+    if n == none {
+        return
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    mn.name = arena_str(f.arena, action_name)
+    mn.label = arena_str(f.arena, label)
+    add(f, n)
+}
+
+pub fn span(f: ref Form, columns: i32) void = {
+    if f.last_field == none {
+        return
+    }
+    val mn: mut ref node.Node = f.last_field as mut ref node.Node
+    mn.span = columns
+}
+
+pub fn required(f: ref Form) void = {
+    if f.last_field == none {
+        return
+    }
+    val mn: mut ref node.Node = f.last_field as mut ref node.Node
+    mn.required = true
+}
+
+pub fn placeholder(f: ref Form, value: str.StringView) void = trust {
+    if f.last_field == none {
+        return
+    }
+    val mn: mut ref node.Node = f.last_field as mut ref node.Node
+    mn.placeholder = arena_str(f.arena, value)
+}
+
+pub fn help(f: ref Form, value: str.StringView) void = trust {
+    if f.last_field == none {
+        return
+    }
+    val mn: mut ref node.Node = f.last_field as mut ref node.Node
+    mn.help = arena_str(f.arena, value)
+}
+
+pub fn value_of(f: ref Form, value: str.StringView) void = trust {
+    if f.last_field == none {
+        return
+    }
+    val mn: mut ref node.Node = f.last_field as mut ref node.Node
+    mn.value = arena_str(f.arena, value)
+}
+
+pub fn attr(f: ref Form, key: str.StringView, value: str.StringView) void = trust {
+    if f.last_node == none {
+        return
+    }
+    val mn: mut ref node.Node = f.last_node as mut ref node.Node
+    node.attr_set(f.arena, mn, key, value)
+}
+
+fn add_handler(
+    f: ref Form,
+    event: str.StringView,
+    action_name: str.StringView,
+    handler: fn(Event, ref void) void,
+    user: ref void
+) void = trust {
+    if handler == none {
+        return
+    }
+    val mf: mut ref Form = f as mut ref Form
+    val h: mut ref Handler = @alloc(@sizeof(Handler) as usize) as mut ref Handler
+    if h == none {
+        return
+    }
+    @memset(h as ref void, 0, @sizeof(Handler) as usize)
+    h.event = heap_str(event)
+    h.name = heap_str(action_name)
+    h.fnaddr = handler as usize
+    h.user = user
+    h.next = mf.handlers
+    mf.handlers = h
+}
+
+pub fn on_event(
+    f: ref Form,
+    event: str.StringView,
+    handler: fn(Event, ref void) void,
+    user: ref void
+) void = trust {
+    add_handler(f, event, "", handler, user)
+}
+
+pub fn on_action(
+    f: ref Form,
+    action_name: str.StringView,
+    handler: fn(Event, ref void) void,
+    user: ref void
+) void = trust {
+    add_handler(f, "click", action_name, handler, user)
+}
+
+pub fn on_submit(f: ref Form, handler: fn(Event, ref void) void, user: ref void) void = trust {
+    add_handler(f, "submit", "", handler, user)
+}
+
+fn handler_matches(h: ref Handler, ev: Event) bool = trust {
+    if h.event != none && @load8(h.event) != 0 {
+        if !str.eql_cstr(ev.kind, h.event) {
+            return false
+        }
+    }
+    if h.name != none && @load8(h.name) != 0 {
+        if !str.eql_cstr(ev.name, h.name) {
+            return false
+        }
+    }
+    return true
+}
+
+fn dispatch(f: ref Form, ev: Event) void = trust {
+    val cur: mut ref Handler = f.handlers
+    for {
+        if cur == none {
+            break
+        }
+        val h: ref Handler = cur as ref Handler
+        if handler_matches(h, ev) {
+            val callback: fn(Event, ref void) void = @bitcast(
+                h.fnaddr,
+                fn(Event, ref void) void
+            )
+            callback(ev, h.user)
+        }
+        cur = h.next
+    }
+}
+
+fn on_binding(id: ref u8, req: ref u8, arg: ref void) void = trust {
+    val f: mut ref Form = arg as ref Form
+    if f == none {
+        return
+    }
+    if f.wv != none {
+        webview.webview_return(f.wv, id, 0, c"null")
+    }
+    if req == none {
+        return
+    }
+    val parsed = json.parse(str.from_cstr(req))
+    match parsed {
+        err _ => {}
+        ok doc => {
+            val root = json.root(doc)
+            val payload = json.array_get(root, 0)
+            match payload {
+                none => {}
+                some p => {
+                    val kind_opt = json.object_get_str(p, "type")
+                    val name_opt = json.object_get_str(p, "name")
+                    val values_opt = json.object_get(p, "values")
+                    val kind: mut str.StringView = empty()
+                    val action: mut str.StringView = empty()
+                    if kind_opt is some k {
+                        kind = k
+                    }
+                    if name_opt is some n {
+                        action = n
+                    }
+                    val valid_values: mut bool = false
+                    match values_opt {
+                        some _ => {
+                            valid_values = true
+                        }
+                        none => {}
+                    }
+                    val ev: Event = Event{
+                        kind: kind
+                        name: action
+                        values: Values{doc: doc, valid: valid_values}
+                        form: f
+                    }
+                    dispatch(f, ev)
+                }
+            }
+            json.doc_free(doc)
+        }
+    }
+}
+
+pub fn value(v: Values, field_name: str.StringView) str.StringView = trust {
+    if !v.valid {
+        return empty()
+    }
+    val root = json.root(v.doc)
+    val values_obj = json.object_get(root, "values")
+    match values_obj {
+        none => {
+            return empty()
+        }
+        some obj => {
+            val found = json.object_get_str(obj, field_name)
+            match found {
+                some s => {
+                    return s
+                }
+                none => {
+                    return empty()
+                }
+            }
+        }
+    }
+}
+
+pub fn has_value(v: Values, field_name: str.StringView) bool = trust {
+    if !v.valid {
+        return false
+    }
+    val root = json.root(v.doc)
+    val values_obj = json.object_get(root, "values")
+    match values_obj {
+        none => {
+            return false
+        }
+        some obj => {
+            match json.object_get(obj, field_name) {
+                some _ => {
+                    return true
+                }
+                none => {
+                    return false
+                }
+            }
+        }
+    }
+}
+
+pub fn checked_value(v: Values, field_name: str.StringView) bool = trust {
+    if !v.valid {
+        return false
+    }
+    val root = json.root(v.doc)
+    val values_obj = json.object_get(root, "values")
+    match values_obj {
+        none => {
+            return false
+        }
+        some obj => {
+            val found = json.object_get_bool(obj, field_name)
+            match found {
+                some b => {
+                    return b
+                }
+                none => {
+                    return false
+                }
+            }
+        }
+    }
+}
+
+pub fn int_value(v: Values, field_name: str.StringView) i64 = trust {
+    if !v.valid {
+        return 0
+    }
+    val root = json.root(v.doc)
+    val values_obj = json.object_get(root, "values")
+    match values_obj {
+        none => {
+            return 0
+        }
+        some obj => {
+            val found = json.object_get_int(obj, field_name)
+            match found {
+                some n => {
+                    return n
+                }
+                none => {
+                    return 0
+                }
+            }
+        }
+    }
+}
+
+pub fn float_value(v: Values, field_name: str.StringView) f64 = trust {
+    if !v.valid {
+        return 0.0
+    }
+    val root = json.root(v.doc)
+    val values_obj = json.object_get(root, "values")
+    match values_obj {
+        none => {
+            return 0.0
+        }
+        some obj => {
+            val found = json.object_get_float(obj, field_name)
+            match found {
+                some n => {
+                    return n
+                }
+                none => {
+                    return 0.0
+                }
+            }
+        }
+    }
+}
+
+fn eval_buffer(f: ref Form, sb: builder.StringBuilder) void = trust {
+    if f.wv == none {
+        return
+    }
+    webview.eval(f.wv, sb.ptr)
+}
+
+fn begin_call(sb: builder.StringBuilder, name: ref u8) void = trust {
+    builder.StringBuilder.append_cstr(sb, name)
+    builder.StringBuilder.append_cstr(sb, c"(")
+}
+
+fn finish_call(sb: builder.StringBuilder) void = trust {
+    builder.StringBuilder.append_cstr(sb, c")")
+}
+
+pub fn set_value(f: ref Form, field_name: str.StringView, new_value: str.StringView) void = trust {
+    val sb = builder.StringBuilder.new()
+    begin_call(sb, c"formant.setValue")
+    html_mod.js_quote_into(sb, field_name)
+    builder.StringBuilder.append_cstr(sb, c",")
+    html_mod.js_quote_into(sb, new_value)
+    finish_call(sb)
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn set_checked(f: ref Form, field_name: str.StringView, state: bool) void = trust {
+    val sb = builder.StringBuilder.new()
+    begin_call(sb, c"formant.setChecked")
+    html_mod.js_quote_into(sb, field_name)
+    builder.StringBuilder.append_cstr(sb, c",")
+    if state {
+        builder.StringBuilder.append_cstr(sb, c"true")
+    } else {
+        builder.StringBuilder.append_cstr(sb, c"false")
+    }
+    finish_call(sb)
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn set_error(f: ref Form, field_name: str.StringView, message: str.StringView) void = trust {
+    val sb = builder.StringBuilder.new()
+    begin_call(sb, c"formant.setError")
+    html_mod.js_quote_into(sb, field_name)
+    builder.StringBuilder.append_cstr(sb, c",")
+    html_mod.js_quote_into(sb, message)
+    finish_call(sb)
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn clear_error(f: ref Form, field_name: str.StringView) void = trust {
+    val sb = builder.StringBuilder.new()
+    begin_call(sb, c"formant.clearError")
+    html_mod.js_quote_into(sb, field_name)
+    finish_call(sb)
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn clear_errors(f: ref Form) void = trust {
+    val sb = builder.StringBuilder.new()
+    builder.StringBuilder.append_cstr(sb, c"formant.clearErrors()")
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn toast(f: ref Form, message: str.StringView, kind: str.StringView) void = trust {
+    val sb = builder.StringBuilder.new()
+    begin_call(sb, c"formant.toast")
+    html_mod.js_quote_into(sb, message)
+    builder.StringBuilder.append_cstr(sb, c",")
+    html_mod.js_quote_into(sb, kind)
+    finish_call(sb)
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn open_dialog(f: ref Form, id: str.StringView) void = trust {
+    val sb = builder.StringBuilder.new()
+    begin_call(sb, c"formant.openDialog")
+    html_mod.js_quote_into(sb, id)
+    finish_call(sb)
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn close_dialog(f: ref Form, id: str.StringView) void = trust {
+    val sb = builder.StringBuilder.new()
+    begin_call(sb, c"formant.closeDialog")
+    html_mod.js_quote_into(sb, id)
+    finish_call(sb)
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn set_busy(f: ref Form, busy: bool) void = trust {
+    val sb = builder.StringBuilder.new()
+    begin_call(sb, c"formant.setBusy")
+    if busy {
+        builder.StringBuilder.append_cstr(sb, c"true")
+    } else {
+        builder.StringBuilder.append_cstr(sb, c"false")
+    }
+    finish_call(sb)
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn focus(f: ref Form, field_name: str.StringView) void = trust {
+    val sb = builder.StringBuilder.new()
+    begin_call(sb, c"formant.focus")
+    html_mod.js_quote_into(sb, field_name)
+    finish_call(sb)
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn scroll_to(f: ref Form, field_name: str.StringView) void = trust {
+    val sb = builder.StringBuilder.new()
+    begin_call(sb, c"formant.scrollTo")
+    html_mod.js_quote_into(sb, field_name)
+    finish_call(sb)
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn set_progress(f: ref Form, field_name: str.StringView, amount: i32) void = trust {
+    val sb = builder.StringBuilder.new()
+    begin_call(sb, c"formant.setProgress")
+    html_mod.js_quote_into(sb, field_name)
+    builder.StringBuilder.append_cstr(sb, c",")
+    html_mod.put_int(sb, amount as i64)
+    finish_call(sb)
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn eval(f: ref Form, code: str.StringView) void = trust {
+    val sb = builder.StringBuilder.new()
+    builder.StringBuilder.append(sb, code)
+    eval_buffer(f, sb)
+    builder.StringBuilder.free(sb)
+}
+
+pub fn quit(f: ref Form) void = trust {
+    if f.wv != none {
+        webview.terminate(f.wv)
+    }
+}
+
+pub fn run(f: mut ref Form) i32 = trust {
+    return run_with(f, false)
+}
+
+pub fn run_with(f: mut ref Form, debug: bool) i32 = trust {
+    if f.root == none {
+        stdio.eputs("formant: no form to run")
+        return 1
+    }
+    val debug_flag: mut i32 = 0
+    if debug {
+        debug_flag = 1
+    }
+    f.debug = debug
+    f.wv = webview.create(debug_flag, none)
+    if f.wv == none {
+        stdio.eputs("formant: could not create the webview window")
+        return 1
+    }
+
+    webview.set_title(f.wv, f.title)
+    webview.set_size(f.wv, f.width, f.height, webview.HINT_NONE)
+    webview.bind(f.wv, c"formant_event", on_binding, f as ref void)
+
+    val doc = html_mod.render(f.root, f.title, f.theme)
+    webview.set_html(f.wv, doc.ptr)
+    builder.StringBuilder.free(doc)
+
+    val code: i32 = webview.run(f.wv)
+    webview.destroy(f.wv)
+    f.wv = none
+    return code
+}

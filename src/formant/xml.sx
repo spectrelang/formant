@@ -1,0 +1,570 @@
+/// A small, dependency-free XML reader for Formant templates.
+///
+/// It handles the subset of XML that .ft files need: elements, attributes,
+/// self-closing tags, comments, processing instructions, doctypes, text
+/// content, and the five predefined entities plus numeric character
+/// references. Strings are copied into the caller's arena.
+
+val mem = use("mem.sx")
+val str        = use("std/string")
+
+pub type XAttr = {
+    name: mut str.StringView
+    value: mut str.StringView
+    next: mut ref XAttr
+}
+
+pub type XNode = {
+    name: mut str.StringView
+    attrs: mut ref XAttr
+    first: mut ref XNode
+    last: mut ref XNode
+    next: mut ref XNode
+    text: mut str.StringView
+    line: mut i32
+}
+
+pub type XError = {
+    line: i32
+    message: str.StringView
+}
+
+type Parser = {
+    src: mut str.StringView
+    pos: mut i64
+    line: mut i32
+    failed: mut bool
+    fail_line: mut i32
+    fail_msg: mut str.StringView
+}
+
+fn empty() str.StringView = {
+    return str.view(c"", 0)
+}
+
+fn at_end(p: ref Parser) bool = {
+    return p.pos >= p.src.len
+}
+
+fn peek(p: ref Parser) u8 = {
+    if p.pos >= p.src.len {
+        return 0
+    }
+    return trust @load8(@ptradd(p.src.ptr, p.pos)) as u8
+}
+
+fn advance(p: mut ref Parser) void = {
+    if p.pos >= p.src.len {
+        return
+    }
+    val c: u8 = trust @load8(@ptradd(p.src.ptr, p.pos)) as u8
+    p.pos++
+    if c == 10 {
+        p.line++
+    }
+}
+
+fn fail(p: mut ref Parser, message: str.StringView) void = {
+    if p.failed {
+        return
+    }
+    p.failed = true
+    p.fail_line = p.line
+    p.fail_msg = message
+}
+
+fn starts_with(p: ref Parser, text: str.StringView) bool = {
+    if p.pos + text.len > p.src.len {
+        return false
+    }
+    val i: mut i64 = 0
+    for {
+        if i >= text.len {
+            break
+        }
+        val a: u8 = trust @load8(@ptradd(p.src.ptr, p.pos + i)) as u8
+        val b: u8 = trust @load8(@ptradd(text.ptr, i)) as u8
+        if a != b {
+            return false
+        }
+        i++
+    }
+    return true
+}
+
+fn skip_ws(p: mut ref Parser) void = {
+    for {
+        if at_end(p) {
+            break
+        }
+        val c: u8 = peek(p)
+        if c != 32 && c != 9 && c != 10 && c != 13 {
+            break
+        }
+        advance(p)
+    }
+}
+
+fn skip_until(p: mut ref Parser, marker: str.StringView) void = {
+    for {
+        if at_end(p) {
+            return
+        }
+        if starts_with(p, marker) {
+            val i: mut i64 = 0
+            for {
+                if i >= marker.len {
+                    break
+                }
+                advance(p)
+                i++
+            }
+            return
+        }
+        advance(p)
+    }
+}
+
+fn skip_misc(p: mut ref Parser) void = {
+    for {
+        skip_ws(p)
+        if starts_with(p, "<!--") {
+            skip_until(p, "-->")
+            continue
+        }
+        if starts_with(p, "<?") {
+            skip_until(p, "?>")
+            continue
+        }
+        if starts_with(p, "<!") {
+            skip_until(p, ">")
+            continue
+        }
+        break
+    }
+}
+
+fn is_name_char(c: u8) bool = {
+    if c >= 65 && c <= 90 {
+        return true
+    }
+    if c >= 97 && c <= 122 {
+        return true
+    }
+    if c >= 48 && c <= 57 {
+        return true
+    }
+    return c == 95 || c == 45 || c == 58 || c == 46
+}
+
+fn read_name(p: mut ref Parser) str.StringView = {
+    val start: i64 = p.pos
+    for {
+        if at_end(p) {
+            break
+        }
+        val c: u8 = trust @load8(@ptradd(p.src.ptr, p.pos)) as u8
+        if !is_name_char(c) {
+            break
+        }
+        p.pos++
+    }
+    return trust str.slice(p.src, start, p.pos)
+}
+
+fn hex_digit(c: u8) i64 = {
+    if c >= 48 && c <= 57 {
+        return (c - 48) as i64
+    }
+    if c >= 65 && c <= 70 {
+        return (c - 55) as i64
+    }
+    if c >= 97 && c <= 102 {
+        return (c - 87) as i64
+    }
+    return -1
+}
+
+fn decode_entities(b: ref mem.Bump, text: str.StringView) str.StringView = trust {
+    if text.len <= 0 {
+        return empty()
+    }
+    val raw = mem.alloc(b, (text.len + 1) as usize)
+    val out: mut ref u8 = none
+    match raw {
+        some p => {
+            out = p as mut ref u8
+        }
+        none => {
+            return empty()
+        }
+    }
+    val i: mut i64 = 0
+    val o: mut i64 = 0
+    for {
+        if i >= text.len {
+            break
+        }
+        val c: u8 = @load8(@ptradd(text.ptr, i)) as u8
+        if c == 38 {
+            val semi: mut i64 = -1
+            val j: mut i64 = i + 1
+            for {
+                if j >= text.len {
+                    break
+                }
+                val d: u8 = @load8(@ptradd(text.ptr, j)) as u8
+                if d == 59 {
+                    semi = j
+                    break
+                }
+                if j - i > 10 {
+                    break
+                }
+                j++
+            }
+            if semi > 0 {
+                val body: str.StringView = str.slice(text, i + 1, semi)
+                val code: mut i64 = -1
+                if str.eql_cstr(body, c"amp") {
+                    code = 38
+                } elif str.eql_cstr(body, c"lt") {
+                    code = 60
+                } elif str.eql_cstr(body, c"gt") {
+                    code = 62
+                } elif str.eql_cstr(body, c"quot") {
+                    code = 34
+                } elif str.eql_cstr(body, c"apos") {
+                    code = 39
+                } elif body.len > 1 {
+                    val first: u8 = @load8(body.ptr) as u8
+                    if first == 35 {
+                        val digits: mut str.StringView = str.slice(body, 1, body.len)
+                        val base: mut i64 = 10
+                        if digits.len > 0 {
+                            val h: u8 = @load8(digits.ptr) as u8
+                            if h == 120 || h == 88 {
+                                base = 16
+                                digits = str.slice(digits, 1, digits.len)
+                            }
+                        }
+                        val value: mut i64 = 0
+                        val valid: mut bool = digits.len > 0
+                        val di: mut i64 = 0
+                        for {
+                            if di >= digits.len {
+                                break
+                            }
+                            val dc: u8 = @load8(@ptradd(digits.ptr, di)) as u8
+                            val dv: i64 = hex_digit(dc)
+                            if dv < 0 || (base == 10 && dv > 9) {
+                                valid = false
+                                break
+                            }
+                            value = value * base + dv
+                            di++
+                        }
+                        if valid {
+                            code = value
+                        }
+                    }
+                }
+                if code >= 0 {
+                    @store8(@ptradd(out, o), code as u8)
+                    o++
+                    i = semi + 1
+                    continue
+                }
+            }
+        }
+        @store8(@ptradd(out, o), c)
+        o++
+        i++
+    }
+    @store8(@ptradd(out, o), 0)
+    return str.view(out as ref u8, o)
+}
+
+fn append_text(b: ref mem.Bump, node: mut ref XNode, text: str.StringView) void = trust {
+    val clean: str.StringView = str.trim(text)
+    if clean.len <= 0 {
+        return
+    }
+    val decoded: str.StringView = decode_entities(b, clean)
+    if decoded.len <= 0 {
+        return
+    }
+    if node.text.len <= 0 {
+        node.text = decoded
+        return
+    }
+    val total: i64 = node.text.len + 1 + decoded.len
+    val raw = mem.alloc(b, (total + 1) as usize)
+    match raw {
+        some rawp => {
+            val dst: ref u8 = rawp as ref u8
+            @memcpy(dst as ref void, node.text.ptr as ref void, node.text.len as usize)
+            @store8(@ptradd(dst, node.text.len), 32)
+            @memcpy(
+                @ptradd(dst, node.text.len + 1),
+                decoded.ptr as ref void,
+                decoded.len as usize
+            )
+            @store8(@ptradd(dst, total), 0)
+            node.text = str.view(dst, total)
+        }
+        none => {}
+    }
+}
+
+fn new_node(p: mut ref Parser, b: ref mem.Bump, name: str.StringView) ref XNode = trust {
+    val raw = mem.alloc(b, @sizeof(XNode) as usize)
+    match raw {
+        some mem => {
+            val n: mut ref XNode = mem as mut ref XNode
+            @memset(n as ref void, 0, @sizeof(XNode) as usize)
+            n.name = name
+            n.line = p.line
+            return n as ref XNode
+        }
+        none => {
+            fail(p, "out of memory")
+            return none
+        }
+    }
+}
+
+fn add_attr(
+    p: mut ref Parser,
+    b: ref mem.Bump,
+    node: mut ref XNode,
+    name: str.StringView,
+    value: str.StringView
+) void = trust {
+    val raw = mem.alloc(b, @sizeof(XAttr) as usize)
+    match raw {
+        some mem => {
+            val a: mut ref XAttr = mem as mut ref XAttr
+            @memset(a as ref void, 0, @sizeof(XAttr) as usize)
+            a.name = name
+            a.value = decode_entities(b, value)
+            a.next = node.attrs
+            node.attrs = a
+        }
+        none => {
+            fail(p, "out of memory")
+        }
+    }
+}
+
+fn append_child(parent: mut ref XNode, child: ref XNode) void = {
+    if child == none {
+        return
+    }
+    if parent.first == none {
+        parent.first = child
+    } else {
+        parent.last.next = child
+    }
+    parent.last = child
+}
+
+fn parse_element(p: mut ref Parser, b: ref mem.Bump) ref XNode = trust {
+    if peek(p) != 60 {
+        fail(p, "expected '<'")
+        return none
+    }
+    advance(p)
+    val name: str.StringView = read_name(p)
+    if name.len <= 0 {
+        fail(p, "expected an element name")
+        return none
+    }
+    val node: ref XNode = new_node(p, b, name)
+    if node == none {
+        return none
+    }
+    val mnode: mut ref XNode = node as mut ref XNode
+
+    for {
+        skip_ws(p)
+        if at_end(p) {
+            fail(p, "unterminated start tag")
+            return none
+        }
+        if peek(p) == 62 {
+            advance(p)
+            break
+        }
+        if peek(p) == 47 {
+            advance(p)
+            if peek(p) != 62 {
+                fail(p, "expected '>' after '/'")
+                return none
+            }
+            advance(p)
+            return node
+        }
+        val attr_name: str.StringView = read_name(p)
+        if attr_name.len <= 0 {
+            fail(p, "expected an attribute name")
+            return none
+        }
+        skip_ws(p)
+        if peek(p) != 61 {
+            fail(p, "expected '=' after an attribute name")
+            return none
+        }
+        advance(p)
+        skip_ws(p)
+        val quote: u8 = peek(p)
+        if quote != 34 && quote != 39 {
+            fail(p, "expected a quoted attribute value")
+            return none
+        }
+        advance(p)
+        val start: i64 = p.pos
+        for {
+            if at_end(p) {
+                fail(p, "unterminated attribute value")
+                return none
+            }
+            if peek(p) == quote {
+                break
+            }
+            advance(p)
+        }
+        val value: str.StringView = str.slice(p.src, start, p.pos)
+        advance(p)
+        add_attr(p, b, mnode, attr_name, value)
+        if p.failed {
+            return none
+        }
+    }
+
+    for {
+        if at_end(p) {
+            fail(p, "unterminated element")
+            return none
+        }
+        if starts_with(p, "</") {
+            val i: mut i64 = 0
+            for {
+                if i >= 2 {
+                    break
+                }
+                advance(p)
+                i++
+            }
+            skip_ws(p)
+            val close_name: str.StringView = read_name(p)
+            skip_ws(p)
+            if peek(p) != 62 {
+                fail(p, "expected '>' in closing tag")
+                return none
+            }
+            advance(p)
+            if !str.eql(close_name, name) {
+                fail(p, "mismatched closing tag")
+                return none
+            }
+            return node
+        }
+        if starts_with(p, "<!--") {
+            skip_until(p, "-->")
+            continue
+        }
+        if starts_with(p, "<?") {
+            skip_until(p, "?>")
+            continue
+        }
+        if peek(p) == 60 {
+            val child: ref XNode = parse_element(p, b)
+            if child == none {
+                return none
+            }
+            append_child(mnode, child)
+            continue
+        }
+        val start: i64 = p.pos
+        for {
+            if at_end(p) {
+                break
+            }
+            if peek(p) == 60 {
+                break
+            }
+            advance(p)
+        }
+        val text: str.StringView = str.slice(p.src, start, p.pos)
+        append_text(b, mnode, text)
+    }
+    return none
+}
+
+pub fn parse(
+    b: ref mem.Bump,
+    src: str.StringView
+) result[ref XNode, XError] = trust {
+    val p: mut ref Parser = @alloc(@sizeof(Parser) as usize) as mut ref Parser
+    if p == none {
+        return err XError{line: 0, message: "out of memory"}
+    }
+    @memset(p as ref void, 0, @sizeof(Parser) as usize)
+    p.src = src
+    p.pos = 0
+    p.line = 1
+    p.failed = false
+    p.fail_line = 1
+    p.fail_msg = empty()
+
+    skip_misc(p)
+    if at_end(p) {
+        val line: i32 = p.line
+        @free(p as ref void)
+        return err XError{line: line, message: "empty document"}
+    }
+    val root: ref XNode = parse_element(p, b)
+    skip_misc(p)
+    if p.failed {
+        val line: i32 = p.fail_line
+        val msg: str.StringView = p.fail_msg
+        @free(p as ref void)
+        return err XError{line: line, message: msg}
+    }
+    if !at_end(p) {
+        val line: i32 = p.line
+        @free(p as ref void)
+        return err XError{line: line, message: "unexpected content after the root element"}
+    }
+    @free(p as ref void)
+    return ok root
+}
+
+pub fn attr(node: ref XNode, name: str.StringView) str.StringView = {
+    val cur: mut ref XAttr = node.attrs
+    for {
+        if cur == none {
+            break
+        }
+        if trust str.eql(cur.name, name) {
+            return cur.value
+        }
+        cur = cur.next
+    }
+    return empty()
+}
+
+pub fn has_attr(node: ref XNode, name: str.StringView) bool = {
+    val cur: mut ref XAttr = node.attrs
+    for {
+        if cur == none {
+            break
+        }
+        if trust str.eql(cur.name, name) {
+            return true
+        }
+        cur = cur.next
+    }
+    return false
+}

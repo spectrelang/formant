@@ -1,0 +1,297 @@
+/// The retained node tree shared by the function-call builder and the .ft
+/// template reader. Nodes and their strings are allocated from a single
+/// arena owned by the form.
+
+val mem = use("mem.sx")
+val str = use("std/string")
+
+pub enum Kind = {
+    Form
+    Header
+    Section
+    Row
+    Field
+    Button
+    Actions
+    Table
+    TableRow
+    Cell
+    Tabs
+    Tab
+    Progress
+    Dialog
+    Menu
+    MenuItem
+    Text
+    Spacer
+    Divider
+    Badge
+    Hidden
+}
+
+pub enum FieldKind = {
+    Text
+    Email
+    Password
+    Number
+    Textarea
+    Select
+    Checkbox
+    Radio
+    Range
+    Date
+    Time
+    Color
+    File
+    Hidden
+}
+
+pub enum Variant = {
+    Primary
+    Secondary
+    Danger
+    Ghost
+    Link
+}
+
+pub type Option = {
+    value: mut ref u8
+    label: mut ref u8
+    next: mut ref Option
+}
+
+pub type Attr = {
+    name: mut ref u8
+    value: mut ref u8
+    next: mut ref Attr
+}
+
+pub type Node = {
+    kind: mut Kind
+    field: mut FieldKind
+    variant: mut Variant
+
+    name: mut ref u8
+    label: mut ref u8
+    value: mut ref u8
+    placeholder: mut ref u8
+    help: mut ref u8
+    title: mut ref u8
+    subtitle: mut ref u8
+    action: mut ref u8
+    method: mut ref u8
+    id: mut ref u8
+    min: mut ref u8
+    max: mut ref u8
+    step: mut ref u8
+    rows: mut ref u8
+    text: mut ref u8
+
+    attrs: mut ref Attr
+    options: mut ref Option
+    columns: mut ref Option
+
+    parent: mut ref Node
+    first: mut ref Node
+    last: mut ref Node
+    next: mut ref Node
+
+    required: mut bool
+    disabled: mut bool
+    checked: mut bool
+    selected: mut bool
+    submit: mut bool
+    open: mut bool
+
+    span: mut i32
+    width: mut i32
+    height: mut i32
+    theme: mut i32
+}
+
+pub fn new(b: ref mem.Bump, kind: Kind) ref Node = trust {
+    val raw = mem.alloc(b, @sizeof(Node) as usize)
+    match raw {
+        some mem => {
+            val n: mut ref Node = mem as mut ref Node
+            @memset(n as ref void, 0, @sizeof(Node) as usize)
+            n.kind = kind
+            n.field = FieldKind.Text
+            n.variant = Variant.Secondary
+            n.name = c""
+            n.label = c""
+            n.value = c""
+            n.placeholder = c""
+            n.help = c""
+            n.title = c""
+            n.subtitle = c""
+            n.action = c""
+            n.method = c""
+            n.id = c""
+            n.min = c""
+            n.max = c""
+            n.step = c""
+            n.rows = c""
+            n.text = c""
+            n.attrs = none
+            n.options = none
+            n.columns = none
+            n.parent = none
+            n.first = none
+            n.last = none
+            n.next = none
+            n.required = false
+            n.disabled = false
+            n.checked = false
+            n.selected = false
+            n.submit = false
+            n.open = false
+            n.span = 1
+            n.width = 0
+            n.height = 0
+            n.theme = 0
+            return n as ref Node
+        }
+        none => {
+            return none
+        }
+    }
+}
+
+pub fn strdup(b: ref mem.Bump, s: str.StringView) ref u8 = trust {
+    if s.len <= 0 {
+        return c""
+    }
+    val raw = mem.alloc(b, (s.len + 1) as usize)
+    match raw {
+        some mem => {
+            val dst: ref u8 = mem as ref u8
+            @memcpy(dst as ref void, s.ptr as ref void, s.len as usize)
+            @store8(@ptradd(dst, s.len), 0)
+            return dst
+        }
+        none => {
+            return c""
+        }
+    }
+}
+
+pub fn append(parent: mut ref Node, child: ref Node) void = {
+    if child == none {
+        return
+    }
+    val c: mut ref Node = child as mut ref Node
+    c.parent = parent
+    if parent.first == none {
+        parent.first = c
+    } else {
+        parent.last.next = c
+    }
+    parent.last = c
+}
+
+pub fn set_text(b: ref mem.Bump, n: mut ref Node, s: str.StringView) void = trust {
+    n.text = strdup(b, s)
+}
+
+pub fn attr_set(
+    b: ref mem.Bump,
+    n: mut ref Node,
+    name: str.StringView,
+    value: str.StringView
+) void = trust {
+    val key: ref u8 = strdup(b, name)
+    val v: ref u8 = strdup(b, value)
+    val cur: mut ref Attr = n.attrs
+    for {
+        if cur == none {
+            break
+        }
+        if @strcmp(cur.name, key) == 0 {
+            cur.value = v
+            return
+        }
+        cur = cur.next
+    }
+    val raw = mem.alloc(b, @sizeof(Attr) as usize)
+    match raw {
+        some mem => {
+            val a: mut ref Attr = mem as mut ref Attr
+            @memset(a as ref void, 0, @sizeof(Attr) as usize)
+            a.name = key
+            a.value = v
+            a.next = n.attrs
+            n.attrs = a
+        }
+        none => {}
+    }
+}
+
+pub fn option_add(
+    b: ref mem.Bump,
+    n: mut ref Node,
+    value: str.StringView,
+    label: str.StringView
+) void = trust {
+    val raw = mem.alloc(b, @sizeof(Option) as usize)
+    match raw {
+        some mem => {
+            val o: mut ref Option = mem as mut ref Option
+            @memset(o as ref void, 0, @sizeof(Option) as usize)
+            o.value = strdup(b, value)
+            o.label = strdup(b, label)
+            o.next = none
+            if n.options == none {
+                n.options = o
+            } else {
+                val cur: mut ref Option = n.options
+                for {
+                    if cur.next == none {
+                        break
+                    }
+                    cur = cur.next
+                }
+                cur.next = o
+            }
+        }
+        none => {}
+    }
+}
+
+pub fn column_add(
+    b: ref mem.Bump,
+    n: mut ref Node,
+    value: str.StringView,
+    label: str.StringView
+) void = trust {
+    val raw = mem.alloc(b, @sizeof(Option) as usize)
+    match raw {
+        some mem => {
+            val o: mut ref Option = mem as mut ref Option
+            @memset(o as ref void, 0, @sizeof(Option) as usize)
+            o.value = strdup(b, value)
+            o.label = strdup(b, label)
+            o.next = none
+            if n.columns == none {
+                n.columns = o
+            } else {
+                val cur: mut ref Option = n.columns
+                for {
+                    if cur.next == none {
+                        break
+                    }
+                    cur = cur.next
+                }
+                cur.next = o
+            }
+        }
+        none => {}
+    }
+}
+
+pub fn is_empty(s: ref u8) bool = {
+    if s == none {
+        return true
+    }
+    return trust @load8(s) == 0
+}

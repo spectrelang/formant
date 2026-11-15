@@ -1,0 +1,9 @@
+component_gallery
+formant-alt
+formant-dev
+SPECTRE_LANGUAGE_REFERENCE.md
+lib/
+std__*
+s-out/
+docs-out*/
+.sx/

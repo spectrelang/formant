@@ -1,0 +1,131 @@
+/// A gallery of the components Formant renders: menus, badges, tables, tabs,
+/// progress, dialogs, validation, and the usual form controls.
+
+val formant = use("../src/formant/formant.sx")
+val stdio   = use("std/stdio")
+val str     = use("std/string")
+
+fn on_event(ev: formant.Event, _: ref void) void = trust {
+    if str.eql_cstr(ev.kind, c"click") {
+        if str.eql_cstr(ev.name, c"dialog") {
+            formant.open_dialog(ev.form, "sample-dialog")
+        } elif str.eql_cstr(ev.name, c"close-dialog") {
+            formant.close_dialog(ev.form, "sample-dialog")
+        } elif str.eql_cstr(ev.name, c"toast") {
+            formant.toast(ev.form, "This is a toast notification.", "success")
+        } elif str.eql_cstr(ev.name, c"reload") {
+            formant.toast(ev.form, "Reloaded the sample data.", "info")
+        } elif str.eql_cstr(ev.name, c"invalid") {
+            formant.set_error(ev.form, "required_field", "Demonstrating an inline validation error.")
+        }
+    }
+
+    if str.eql_cstr(ev.kind, c"submit") {
+        formant.toast(ev.form, "The form was submitted.", "success")
+    }
+}
+
+pub fn main() i32 = trust {
+    match formant.new_form("Formant | Gallery", 980, 860) {
+        err e => {
+            stdio.print("formant: {s}\n", {e.message})
+            return 1
+        }
+        ok f => {
+            formant.header(f, "Component gallery", "Every component uses the active platform theme")
+            formant.menu(f, "More")
+            formant.menu_item(f, "reload", "Reload sample data")
+            formant.end(f)
+            formant.button(f, "dialog", "Open dialog", 3)
+            formant.end(f)
+
+            formant.section(f, "Controls", "Inputs, selects, and toggles")
+            formant.row(f)
+            formant.text_input(f, "text", "Text field")
+            formant.placeholder(f, "Type something")
+            formant.email_input(f, "email", "Email field")
+            formant.required(f)
+            formant.end(f)
+            formant.row(f)
+            formant.number_input(f, "number", "Number")
+            formant.value_of(f, "42")
+            formant.password_input(f, "password", "Password")
+            formant.placeholder(f, "••••••••")
+            formant.end(f)
+            formant.select(
+                f,
+                "select",
+                "Select",
+                "one:First option|two:Second option|three:Third option"
+            )
+            formant.radio(f, "radio", "Radio group", "a:Option A|b:Option B|c:Option C")
+            formant.checkbox(f, "check", "A checkbox with a longer label")
+            formant.range(f, "range", "Range", 0, 100, 60)
+            formant.textarea(f, "notes", "Textarea", 4)
+            formant.end(f)
+
+            formant.section(f, "Validation", "Errors are shown under the field")
+            formant.text_input(f, "required_field", "Required field")
+            formant.required(f)
+            formant.help(f, "Click the button below to show an error.")
+            formant.actions(f)
+            formant.button(f, "invalid", "Show error", 3)
+            formant.end(f)
+            formant.end(f)
+
+            formant.section(f, "Tabs", "")
+            formant.tabs(f)
+            formant.tab(f, "General")
+            formant.text(f, "The first tab panel.")
+            formant.badge(f, "New")
+            formant.end(f)
+            formant.tab(f, "Advanced")
+            formant.text(f, "The second tab panel.")
+            formant.progress(f, "Progress", 64, 100)
+            formant.end(f)
+            formant.end(f)
+            formant.end(f)
+
+            formant.section(f, "Table", "Static rows rendered from calls")
+            formant.table(f, "name:Name|role:Role|status:Status")
+            formant.table_row(f, "Ada Lovelace|Analyst|Active")
+            formant.table_row(f, "Grace Hopper|Compiler|Active")
+            formant.table_row(f, "Katherine Johnson|Mathematician|Away")
+            formant.end(f)
+            formant.end(f)
+
+            formant.section(f, "Notifications", "")
+            formant.actions(f)
+            formant.spacer(f)
+            formant.button(f, "toast", "Show toast", 3)
+            formant.end(f)
+            formant.end(f)
+
+            formant.actions(f)
+            formant.button(f, "cancel", "Reset", 3)
+            formant.submit_button(f, "save", "Submit")
+            formant.end(f)
+
+            formant.dialog(f, "sample-dialog", "A modal dialog")
+            formant.text(f, "Dialogs use the same backdrop, radius, and shadow as the host platform.")
+            formant.text_input(f, "dialog_name", "Name")
+            formant.placeholder(f, "Optional")
+            formant.actions(f)
+            formant.button(f, "close-dialog", "Cancel", 3)
+            formant.button(f, "close-dialog", "Save", 1)
+            formant.end(f)
+            formant.end(f)
+
+            formant.on_submit(f, on_event, none)
+            formant.on_action(f, "dialog", on_event, none)
+            formant.on_action(f, "close-dialog", on_event, none)
+            formant.on_action(f, "toast", on_event, none)
+            formant.on_action(f, "reload", on_event, none)
+            formant.on_action(f, "invalid", on_event, none)
+
+            val code: i32 = formant.run(f)
+            formant.free(f)
+            return code
+        }
+    }
+}

@@ -1,0 +1,181 @@
+/* macOS Aqua / Sonoma-inspired theme. */
+
+.fm-theme-darwin {
+  --fm-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --fm-font-size: 13px;
+  --fm-line-height: 1.4;
+  --fm-bg: #f2f2f7;
+  --fm-surface: #ffffff;
+  --fm-surface-2: #f5f5f7;
+  --fm-surface-3: #e8e8ed;
+  --fm-text: #1d1d1f;
+  --fm-muted: #6e6e73;
+  --fm-border: #d9d9de;
+  --fm-border-strong: #c6c6c8;
+  --fm-accent: #007aff;
+  --fm-accent-hover: #0069d9;
+  --fm-accent-fg: #ffffff;
+  --fm-radius: 6px;
+  --fm-radius-lg: 10px;
+  --fm-control-h: 30px;
+  --fm-btn-h: 30px;
+  --fm-gap: 18px;
+  --fm-header-h: 52px;
+  --fm-header-bg: #f6f6f6;
+  --fm-header-border: #d1d1d1;
+  --fm-input-bg: #ffffff;
+  --fm-btn-bg: #ffffff;
+  --fm-btn-hover: #f7f7f7;
+  --fm-btn-active: #ececec;
+  --fm-btn-border: #c9c9cc;
+  --fm-focus: 0 0 0 3px rgba(0, 122, 255, 0.28);
+  --fm-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.14);
+  --fm-shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.26);
+}
+
+.fm-theme-darwin .fm-headerbar {
+  background: var(--fm-header-bg);
+  border-bottom-color: var(--fm-header-border);
+  padding-left: 84px;
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+.fm-theme-darwin .fm-headerbar-title .fm-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.fm-theme-darwin .fm-headerbar-title .fm-subtitle {
+  font-size: 11px;
+}
+
+.fm-theme-darwin .fm-section {
+  border-color: #e3e3e8;
+  box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.05);
+}
+
+.fm-theme-darwin .fm-label {
+  font-weight: 500;
+  font-size: 12px;
+  color: #3a3a3c;
+}
+
+.fm-theme-darwin .fm-input,
+.fm-theme-darwin .fm-textarea,
+.fm-theme-darwin .fm-select {
+  border-color: var(--fm-border-strong);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+  padding: 4px 8px;
+}
+
+.fm-theme-darwin .fm-input:focus,
+.fm-theme-darwin .fm-textarea:focus,
+.fm-theme-darwin .fm-select:focus {
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.04), var(--fm-focus);
+}
+
+.fm-theme-darwin .fm-btn {
+  padding: 3px 13px;
+  font-weight: 500;
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.16), inset 0 0.5px 0 rgba(255, 255, 255, 0.8);
+}
+
+.fm-theme-darwin .fm-btn-primary {
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.2), inset 0 0.5px 0 rgba(255, 255, 255, 0.28);
+}
+
+.fm-theme-darwin .fm-btn:active {
+  transform: none;
+  box-shadow: none;
+}
+
+.fm-theme-darwin .fm-section-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fm-theme-darwin .fm-section-desc {
+  font-size: 11px;
+}
+
+.fm-theme-darwin .fm-tab {
+  font-weight: 500;
+  font-size: 12px;
+  border-radius: 5px;
+  border-bottom: 0;
+  padding: 5px 10px;
+}
+
+.fm-theme-darwin .fm-tab.fm-active {
+  background: var(--fm-surface);
+  color: var(--fm-text);
+  box-shadow: var(--fm-shadow);
+}
+
+.fm-theme-darwin .fm-tablist {
+  border-bottom: 0;
+  padding: 3px;
+  background: var(--fm-surface-3);
+  border-radius: 7px;
+  align-self: flex-start;
+}
+
+.fm-theme-darwin .fm-table th {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  background: #f7f7f9;
+}
+
+.fm-theme-darwin .fm-dialog {
+  border-radius: 12px;
+}
+
+.fm-theme-darwin .fm-toast {
+  border-radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .fm-theme-darwin {
+    --fm-bg: #1e1e1e;
+    --fm-surface: #2a2a2a;
+    --fm-surface-2: #323232;
+    --fm-surface-3: #3a3a3c;
+    --fm-text: #f2f2f7;
+    --fm-muted: #98989d;
+    --fm-border: #3f3f42;
+    --fm-border-strong: #545458;
+    --fm-accent: #0a84ff;
+    --fm-accent-hover: #2f96ff;
+    --fm-header-bg: #2a2a2a;
+    --fm-header-border: #1b1b1b;
+    --fm-input-bg: #1f1f1f;
+    --fm-btn-bg: #3a3a3c;
+    --fm-btn-hover: #444446;
+    --fm-btn-active: #4d4d50;
+    --fm-btn-border: #545458;
+    --fm-focus: 0 0 0 3px rgba(10, 132, 255, 0.35);
+  }
+
+  .fm-theme-darwin .fm-label {
+    color: #d8d8dc;
+  }
+
+  .fm-theme-darwin .fm-section {
+    border-color: #3a3a3c;
+  }
+
+  .fm-theme-darwin .fm-table th {
+    background: #323232;
+  }
+
+  .fm-theme-darwin .fm-tab.fm-active {
+    background: #3a3a3c;
+  }
+
+  .fm-theme-darwin .fm-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2398989d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+}

@@ -1,0 +1,838 @@
+/// HTML rendering for the retained node tree.
+
+val assets  = use("assets.sx")
+val builder = use("std/string/builder")
+val node    = use("node.sx")
+val str     = use("std/string")
+
+pub fn host_theme() i32 = {
+    when darwin {
+        return 2
+    }
+    when windows {
+        return 3
+    }
+    return 1
+}
+
+fn theme_class(theme: i32) str.StringView = {
+    if theme == 2 {
+        return "fm-theme-darwin"
+    }
+    if theme == 3 {
+        return "fm-theme-windows"
+    }
+    return "fm-theme-linux"
+}
+
+fn platform_class(theme: i32) str.StringView = {
+    if theme == 2 {
+        return "fm-platform-darwin"
+    }
+    if theme == 3 {
+        return "fm-platform-windows"
+    }
+    return "fm-platform-linux"
+}
+
+pub fn escape_into(sb: builder.StringBuilder, s: str.StringView) void = trust {
+    if s.len <= 0 {
+        return
+    }
+    val i: mut i64 = 0
+    for {
+        if i >= s.len {
+            break
+        }
+        val c: u8 = @load8(@ptradd(s.ptr, i)) as u8
+        if c == 38 {
+            builder.StringBuilder.append_cstr(sb, c"&amp;")
+        } elif c == 60 {
+            builder.StringBuilder.append_cstr(sb, c"&lt;")
+        } elif c == 62 {
+            builder.StringBuilder.append_cstr(sb, c"&gt;")
+        } elif c == 34 {
+            builder.StringBuilder.append_cstr(sb, c"&quot;")
+        } elif c == 39 {
+            builder.StringBuilder.append_cstr(sb, c"&#39;")
+        } else {
+            builder.StringBuilder.append_char(sb, c)
+        }
+        i++
+    }
+}
+
+pub fn escape_cstr_into(sb: builder.StringBuilder, s: ref u8) void = trust {
+    if s == none {
+        return
+    }
+    escape_into(sb, str.from_cstr(s))
+}
+
+pub fn js_quote_into(sb: builder.StringBuilder, s: str.StringView) void = trust {
+    builder.StringBuilder.append_char(sb, 34)
+    val i: mut i64 = 0
+    for {
+        if i >= s.len {
+            break
+        }
+        val c: u8 = @load8(@ptradd(s.ptr, i)) as u8
+        if c == 34 {
+            builder.StringBuilder.append_cstr(sb, c"\\\"")
+        } elif c == 92 {
+            builder.StringBuilder.append_cstr(sb, c"\\\\")
+        } elif c == 10 {
+            builder.StringBuilder.append_cstr(sb, c"\\n")
+        } elif c == 13 {
+            builder.StringBuilder.append_cstr(sb, c"\\r")
+        } elif c == 9 {
+            builder.StringBuilder.append_cstr(sb, c"\\t")
+        } elif c == 60 {
+            builder.StringBuilder.append_cstr(sb, c"\\u003c")
+        } elif c == 62 {
+            builder.StringBuilder.append_cstr(sb, c"\\u003e")
+        } elif c == 38 {
+            builder.StringBuilder.append_cstr(sb, c"\\u0026")
+        } elif c < 32 {
+            builder.StringBuilder.append_cstr(sb, c"\\u00")
+            builder.StringBuilder.append_char(sb, hex_char((c >> 4) as u8))
+            builder.StringBuilder.append_char(sb, hex_char(c & 15))
+        } else {
+            builder.StringBuilder.append_char(sb, c)
+        }
+        i++
+    }
+    builder.StringBuilder.append_char(sb, 34)
+}
+
+pub fn js_quote_cstr_into(sb: builder.StringBuilder, s: ref u8) void = trust {
+    if s == none {
+        js_quote_into(sb, str.view(c"", 0))
+        return
+    }
+    js_quote_into(sb, str.from_cstr(s))
+}
+
+fn hex_char(v: u8) u8 = {
+    if v < 10 {
+        return 48 + v
+    }
+    return 87 + v
+}
+
+pub fn put_int(sb: builder.StringBuilder, v: i64) void = trust {
+    val buf: mut [64]u8 = @zeroed
+    @snprintf(@addr(buf) as ref u8, 64, "{d}", {v})
+    builder.StringBuilder.append_cstr(sb, @addr(buf) as ref u8)
+}
+
+fn put_attr(sb: builder.StringBuilder, name: ref u8, value: ref u8) void = trust {
+    if value == none || @load8(value) == 0 {
+        return
+    }
+    builder.StringBuilder.append_cstr(sb, c" ")
+    builder.StringBuilder.append_cstr(sb, name)
+    builder.StringBuilder.append_cstr(sb, c"=\"")
+    escape_cstr_into(sb, value)
+    builder.StringBuilder.append_cstr(sb, c"\"")
+}
+
+fn put_bool_attr(sb: builder.StringBuilder, name: ref u8, value: bool) void = trust {
+    if value {
+        builder.StringBuilder.append_cstr(sb, c" ")
+        builder.StringBuilder.append_cstr(sb, name)
+    }
+}
+
+fn passthrough_attrs(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    val cur: mut ref node.Attr = n.attrs
+    for {
+        if cur == none {
+            break
+        }
+        val a: ref node.Attr = cur as ref node.Attr
+        val name: str.StringView = str.from_cstr(a.name)
+        if str.eql_cstr(name, c"class")
+        || str.eql_cstr(name, c"style")
+        || str.eql_cstr(name, c"id")
+        || str.eql_cstr(name, c"aria-label")
+        || str.eql_cstr(name, c"name")
+        || str.eql_cstr(name, c"label")
+        || str.eql_cstr(name, c"value")
+        || str.eql_cstr(name, c"title")
+        || str.eql_cstr(name, c"description")
+        || str.eql_cstr(name, c"placeholder")
+        || str.eql_cstr(name, c"help")
+        || str.eql_cstr(name, c"action")
+        || str.eql_cstr(name, c"method")
+        || str.eql_cstr(name, c"min")
+        || str.eql_cstr(name, c"max")
+        || str.eql_cstr(name, c"step")
+        || str.eql_cstr(name, c"rows")
+        || str.eql_cstr(name, c"span")
+        || str.eql_cstr(name, c"theme")
+        || str.eql_cstr(name, c"columns")
+        || str.eql_cstr(name, c"variant")
+        || str.eql_cstr(name, c"required")
+        || str.eql_cstr(name, c"disabled")
+        || str.eql_cstr(name, c"checked")
+        || str.eql_cstr(name, c"selected")
+        || str.eql_cstr(name, c"submit")
+        || str.eql_cstr(name, c"open") {
+            cur = a.next
+            continue
+        }
+        put_attr(sb, a.name, a.value)
+        cur = a.next
+    }
+}
+
+fn field_input_type(kind: node.FieldKind) ref u8 = {
+    if kind == node.FieldKind.Email {
+        return c"email"
+    }
+    if kind == node.FieldKind.Password {
+        return c"password"
+    }
+    if kind == node.FieldKind.Number {
+        return c"number"
+    }
+    if kind == node.FieldKind.Range {
+        return c"range"
+    }
+    if kind == node.FieldKind.Date {
+        return c"date"
+    }
+    if kind == node.FieldKind.Time {
+        return c"time"
+    }
+    if kind == node.FieldKind.Color {
+        return c"color"
+    }
+    if kind == node.FieldKind.File {
+        return c"file"
+    }
+    if kind == node.FieldKind.Hidden {
+        return c"hidden"
+    }
+    return c"text"
+}
+
+fn control_id(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    if node.is_empty(n.id) {
+        if node.is_empty(n.name) {
+            return
+        }
+        builder.StringBuilder.append_cstr(sb, c" id=\"fm-")
+        escape_cstr_into(sb, n.name)
+        builder.StringBuilder.append_cstr(sb, c"\"")
+        return
+    }
+    put_attr(sb, c"id", n.id)
+}
+
+fn label_for(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    if !node.is_empty(n.id) {
+        builder.StringBuilder.append_cstr(sb, c" for=\"")
+        escape_cstr_into(sb, n.id)
+        builder.StringBuilder.append_cstr(sb, c"\"")
+        return
+    }
+    if !node.is_empty(n.name) {
+        builder.StringBuilder.append_cstr(sb, c" for=\"fm-")
+        escape_cstr_into(sb, n.name)
+        builder.StringBuilder.append_cstr(sb, c"\"")
+    }
+}
+
+fn field_span_class(n: ref node.Node) str.StringView = {
+    if n.span >= 2 {
+        return " fm-span-2"
+    }
+    return ""
+}
+
+fn render_field(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    if n.field == node.FieldKind.Hidden {
+        builder.StringBuilder.append_cstr(sb, c"<input type=\"hidden\"")
+        put_attr(sb, c"name", n.name)
+        put_attr(sb, c"value", n.value)
+        control_id(sb, n)
+        builder.StringBuilder.append_cstr(sb, c">")
+        return
+    }
+
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-field")
+    if n.field == node.FieldKind.Checkbox {
+        builder.StringBuilder.append_cstr(sb, c" fm-field-checkbox")
+    }
+    if n.field == node.FieldKind.Radio {
+        builder.StringBuilder.append_cstr(sb, c" fm-field-radio")
+    }
+    if n.field == node.FieldKind.Range {
+        builder.StringBuilder.append_cstr(sb, c" fm-field-range")
+    }
+    builder.StringBuilder.append_cstr(sb, c" fm-field-")
+    builder.StringBuilder.append_cstr(sb, field_input_type(n.field))
+    builder.StringBuilder.append(sb, field_span_class(n))
+    builder.StringBuilder.append_cstr(sb, c"\" data-fm-field=\"")
+    escape_cstr_into(sb, n.name)
+    builder.StringBuilder.append_cstr(sb, c"\">")
+
+    if n.field == node.FieldKind.Checkbox {
+        render_checkbox(sb, n)
+    } elif n.field == node.FieldKind.Radio {
+        render_radio(sb, n)
+    } else {
+        if !node.is_empty(n.label) {
+            builder.StringBuilder.append_cstr(sb, c"<label class=\"fm-label\"")
+            label_for(sb, n)
+            builder.StringBuilder.append_cstr(sb, c">")
+            escape_cstr_into(sb, n.label)
+            if n.required {
+                builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-req\" aria-hidden=\"true\">*</span>")
+            }
+            builder.StringBuilder.append_cstr(sb, c"</label>")
+        }
+        if n.field == node.FieldKind.Textarea {
+            render_textarea(sb, n)
+        } elif n.field == node.FieldKind.Select {
+            render_select(sb, n)
+        } elif n.field == node.FieldKind.Range {
+            render_range(sb, n)
+        } else {
+            render_input(sb, n)
+        }
+        render_field_footer(sb, n)
+    }
+    builder.StringBuilder.append_cstr(sb, c"</div>")
+}
+
+fn render_field_footer(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    if !node.is_empty(n.help) {
+        builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-help\">")
+        escape_cstr_into(sb, n.help)
+        builder.StringBuilder.append_cstr(sb, c"</div>")
+    }
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-error\" aria-live=\"polite\"></div>")
+}
+
+fn render_input(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<input class=\"fm-input\"")
+    control_id(sb, n)
+    put_attr(sb, c"name", n.name)
+    builder.StringBuilder.append_cstr(sb, c" type=\"")
+    builder.StringBuilder.append_cstr(sb, field_input_type(n.field))
+    builder.StringBuilder.append_cstr(sb, c"\"")
+    put_attr(sb, c"value", n.value)
+    put_attr(sb, c"placeholder", n.placeholder)
+    put_attr(sb, c"min", n.min)
+    put_attr(sb, c"max", n.max)
+    put_attr(sb, c"step", n.step)
+    put_bool_attr(sb, c"required", n.required)
+    put_bool_attr(sb, c"disabled", n.disabled)
+    passthrough_attrs(sb, n)
+    builder.StringBuilder.append_cstr(sb, c">")
+}
+
+fn render_textarea(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<textarea class=\"fm-textarea\"")
+    control_id(sb, n)
+    put_attr(sb, c"name", n.name)
+    put_attr(sb, c"placeholder", n.placeholder)
+    if node.is_empty(n.rows) {
+        builder.StringBuilder.append_cstr(sb, c" rows=\"4\"")
+    } else {
+        put_attr(sb, c"rows", n.rows)
+    }
+    put_bool_attr(sb, c"required", n.required)
+    put_bool_attr(sb, c"disabled", n.disabled)
+    passthrough_attrs(sb, n)
+    builder.StringBuilder.append_cstr(sb, c">")
+    escape_cstr_into(sb, n.value)
+    builder.StringBuilder.append_cstr(sb, c"</textarea>")
+}
+
+fn render_select(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<select class=\"fm-select\"")
+    control_id(sb, n)
+    put_attr(sb, c"name", n.name)
+    put_bool_attr(sb, c"required", n.required)
+    put_bool_attr(sb, c"disabled", n.disabled)
+    passthrough_attrs(sb, n)
+    builder.StringBuilder.append_cstr(sb, c">")
+    if !node.is_empty(n.placeholder) {
+        builder.StringBuilder.append_cstr(sb, c"<option value=\"\" disabled")
+        if node.is_empty(n.value) {
+            builder.StringBuilder.append_cstr(sb, c" selected")
+        }
+        builder.StringBuilder.append_cstr(sb, c" hidden>")
+        escape_cstr_into(sb, n.placeholder)
+        builder.StringBuilder.append_cstr(sb, c"</option>")
+    }
+    val cur: mut ref node.Option = n.options
+    for {
+        if cur == none {
+            break
+        }
+        val o: ref node.Option = cur as ref node.Option
+        builder.StringBuilder.append_cstr(sb, c"<option value=\"")
+        escape_cstr_into(sb, o.value)
+        builder.StringBuilder.append_cstr(sb, c"\"")
+        if !node.is_empty(n.value) && @strcmp(n.value, o.value) == 0 {
+            builder.StringBuilder.append_cstr(sb, c" selected")
+        }
+        builder.StringBuilder.append_cstr(sb, c">")
+        escape_cstr_into(sb, o.label)
+        builder.StringBuilder.append_cstr(sb, c"</option>")
+        cur = o.next
+    }
+    builder.StringBuilder.append_cstr(sb, c"</select>")
+}
+
+fn render_checkbox(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<label class=\"fm-checkrow\">")
+    builder.StringBuilder.append_cstr(sb, c"<input type=\"checkbox\"")
+    control_id(sb, n)
+    put_attr(sb, c"name", n.name)
+    put_attr(sb, c"value", n.value)
+    put_bool_attr(sb, c"checked", n.checked)
+    put_bool_attr(sb, c"required", n.required)
+    put_bool_attr(sb, c"disabled", n.disabled)
+    passthrough_attrs(sb, n)
+    builder.StringBuilder.append_cstr(sb, c"><span>")
+    escape_cstr_into(sb, n.label)
+    if n.required {
+        builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-req\" aria-hidden=\"true\">*</span>")
+    }
+    builder.StringBuilder.append_cstr(sb, c"</span></label>")
+    render_field_footer(sb, n)
+}
+
+fn render_radio(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    if !node.is_empty(n.label) {
+        builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-label\">")
+        escape_cstr_into(sb, n.label)
+        if n.required {
+            builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-req\" aria-hidden=\"true\">*</span>")
+        }
+        builder.StringBuilder.append_cstr(sb, c"</span>")
+    }
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-radiolist\">")
+    val cur: mut ref node.Option = n.options
+    for {
+        if cur == none {
+            break
+        }
+        val o: ref node.Option = cur as ref node.Option
+        builder.StringBuilder.append_cstr(sb, c"<label class=\"fm-radio\"><input type=\"radio\"")
+        put_attr(sb, c"name", n.name)
+        builder.StringBuilder.append_cstr(sb, c" value=\"")
+        escape_cstr_into(sb, o.value)
+        builder.StringBuilder.append_cstr(sb, c"\"")
+        if !node.is_empty(n.value) && @strcmp(n.value, o.value) == 0 {
+            builder.StringBuilder.append_cstr(sb, c" checked")
+        } elif n.checked {
+            builder.StringBuilder.append_cstr(sb, c" checked")
+        }
+        put_bool_attr(sb, c"required", n.required)
+        put_bool_attr(sb, c"disabled", n.disabled)
+        builder.StringBuilder.append_cstr(sb, c"><span>")
+        escape_cstr_into(sb, o.label)
+        builder.StringBuilder.append_cstr(sb, c"</span></label>")
+        cur = o.next
+    }
+    builder.StringBuilder.append_cstr(sb, c"</div>")
+    render_field_footer(sb, n)
+}
+
+fn render_range(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-range-row\">")
+    render_input(sb, n)
+    builder.StringBuilder.append_cstr(sb, c"<output>")
+    if node.is_empty(n.value) {
+        builder.StringBuilder.append_cstr(sb, c"0")
+    } else {
+        escape_cstr_into(sb, n.value)
+    }
+    builder.StringBuilder.append_cstr(sb, c"</output></div>")
+}
+
+fn render_button(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<button type=\"button\" class=\"fm-btn")
+    if n.variant == node.Variant.Primary {
+        builder.StringBuilder.append_cstr(sb, c" fm-btn-primary")
+    } elif n.variant == node.Variant.Danger {
+        builder.StringBuilder.append_cstr(sb, c" fm-btn-danger")
+    } elif n.variant == node.Variant.Ghost {
+        builder.StringBuilder.append_cstr(sb, c" fm-btn-ghost")
+    } elif n.variant == node.Variant.Link {
+        builder.StringBuilder.append_cstr(sb, c" fm-btn-link")
+    }
+    builder.StringBuilder.append_cstr(sb, c"\"")
+    if !node.is_empty(n.name) {
+        builder.StringBuilder.append_cstr(sb, c" data-fm-action=\"")
+        escape_cstr_into(sb, n.name)
+        builder.StringBuilder.append_cstr(sb, c"\"")
+    }
+    put_bool_attr(sb, c"data-fm-submit", n.submit)
+    put_bool_attr(sb, c"disabled", n.disabled)
+    put_attr(sb, c"title", n.help)
+    passthrough_attrs(sb, n)
+    builder.StringBuilder.append_cstr(sb, c">")
+    if node.is_empty(n.label) {
+        escape_cstr_into(sb, n.text)
+    } else {
+        escape_cstr_into(sb, n.label)
+    }
+    builder.StringBuilder.append_cstr(sb, c"</button>")
+}
+
+fn render_header(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<header class=\"fm-headerbar\">")
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-headerbar-title\">")
+    if !node.is_empty(n.title) {
+        builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-title\">")
+        escape_cstr_into(sb, n.title)
+        builder.StringBuilder.append_cstr(sb, c"</span>")
+    }
+    if !node.is_empty(n.subtitle) {
+        builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-subtitle\">")
+        escape_cstr_into(sb, n.subtitle)
+        builder.StringBuilder.append_cstr(sb, c"</span>")
+    }
+    builder.StringBuilder.append_cstr(sb, c"</div>")
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-headerbar-actions\">")
+    val cur: mut ref node.Node = n.first
+    for {
+        if cur == none {
+            break
+        }
+        render_node(sb, cur as ref node.Node)
+        cur = cur.next
+    }
+    builder.StringBuilder.append_cstr(sb, c"</div></header>")
+}
+
+fn render_section(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<section class=\"fm-section\"")
+    passthrough_attrs(sb, n)
+    builder.StringBuilder.append_cstr(sb, c">")
+    if !node.is_empty(n.title) || !node.is_empty(n.subtitle) {
+        builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-section-head\">")
+        if !node.is_empty(n.title) {
+            builder.StringBuilder.append_cstr(sb, c"<h2 class=\"fm-section-title\">")
+            escape_cstr_into(sb, n.title)
+            builder.StringBuilder.append_cstr(sb, c"</h2>")
+        }
+        if !node.is_empty(n.subtitle) {
+            builder.StringBuilder.append_cstr(sb, c"<p class=\"fm-section-desc\">")
+            escape_cstr_into(sb, n.subtitle)
+            builder.StringBuilder.append_cstr(sb, c"</p>")
+        }
+        builder.StringBuilder.append_cstr(sb, c"</div>")
+    }
+    render_children(sb, n)
+    builder.StringBuilder.append_cstr(sb, c"</section>")
+}
+
+fn render_children(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    val cur: mut ref node.Node = n.first
+    for {
+        if cur == none {
+            break
+        }
+        render_node(sb, cur as ref node.Node)
+        cur = cur.next
+    }
+}
+
+fn render_table(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<table class=\"fm-table\"")
+    passthrough_attrs(sb, n)
+    builder.StringBuilder.append_cstr(sb, c">")
+    if n.columns != none {
+        builder.StringBuilder.append_cstr(sb, c"<thead><tr>")
+        val col: mut ref node.Option = n.columns
+        for {
+            if col == none {
+                break
+            }
+            val c: ref node.Option = col as ref node.Option
+            builder.StringBuilder.append_cstr(sb, c"<th>")
+            escape_cstr_into(sb, c.label)
+            builder.StringBuilder.append_cstr(sb, c"</th>")
+            col = c.next
+        }
+        builder.StringBuilder.append_cstr(sb, c"</tr></thead>")
+    }
+    builder.StringBuilder.append_cstr(sb, c"<tbody>")
+    render_children(sb, n)
+    builder.StringBuilder.append_cstr(sb, c"</tbody></table>")
+}
+
+fn render_table_row(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<tr>")
+    render_children(sb, n)
+    builder.StringBuilder.append_cstr(sb, c"</tr>")
+}
+
+fn render_cell(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<td>")
+    if !node.is_empty(n.text) {
+        escape_cstr_into(sb, n.text)
+    }
+    render_children(sb, n)
+    builder.StringBuilder.append_cstr(sb, c"</td>")
+}
+
+fn render_tabs(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-tabs\"")
+    passthrough_attrs(sb, n)
+    builder.StringBuilder.append_cstr(sb, c"><div class=\"fm-tablist\" role=\"tablist\">")
+    val current: mut ref node.Node = n.first
+    val index: mut i64 = 0
+    for {
+        if current == none {
+            break
+        }
+        val t: ref node.Node = current as ref node.Node
+        builder.StringBuilder.append_cstr(sb, c"<button type=\"button\" class=\"fm-tab")
+        if index == 0 {
+            builder.StringBuilder.append_cstr(sb, c" fm-active")
+        }
+        builder.StringBuilder.append_cstr(sb, c"\" role=\"tab\" data-fm-tab=\"")
+        put_int(sb, index)
+        builder.StringBuilder.append_cstr(sb, c"\">")
+        escape_cstr_into(sb, t.label)
+        builder.StringBuilder.append_cstr(sb, c"</button>")
+        index++
+        current = t.next
+    }
+    builder.StringBuilder.append_cstr(sb, c"</div>")
+    val panel: mut ref node.Node = n.first
+    val pindex: mut i64 = 0
+    for {
+        if panel == none {
+            break
+        }
+        val t: ref node.Node = panel as ref node.Node
+        builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-tabpanel")
+        if pindex == 0 {
+            builder.StringBuilder.append_cstr(sb, c" fm-active")
+        }
+        builder.StringBuilder.append_cstr(sb, c"\" role=\"tabpanel\" data-fm-panel=\"")
+        put_int(sb, pindex)
+        builder.StringBuilder.append_cstr(sb, c"\">")
+        render_children(sb, t)
+        builder.StringBuilder.append_cstr(sb, c"</div>")
+        pindex++
+        panel = t.next
+    }
+    builder.StringBuilder.append_cstr(sb, c"</div>")
+}
+
+fn render_progress(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    val max_value: i64 = @atoi(n.max)
+    val value: i64 = @atoi(n.value)
+    val actual_max: mut i64 = max_value
+    if max_value <= 0 {
+        actual_max = 100
+    }
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-progress-row\"")
+    passthrough_attrs(sb, n)
+    builder.StringBuilder.append_cstr(sb, c">")
+    if !node.is_empty(n.label) {
+        builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-progress-label\"><span>")
+        escape_cstr_into(sb, n.label)
+        builder.StringBuilder.append_cstr(sb, c"</span><span>")
+        put_int(sb, value)
+        builder.StringBuilder.append_cstr(sb, c" / ")
+        put_int(sb, actual_max)
+        builder.StringBuilder.append_cstr(sb, c"</span></div>")
+    }
+    builder.StringBuilder.append_cstr(sb, c"<progress class=\"fm-progress\" value=\"")
+    put_int(sb, value)
+    builder.StringBuilder.append_cstr(sb, c"\" max=\"")
+    put_int(sb, actual_max)
+    builder.StringBuilder.append_cstr(sb, c"\"></progress></div>")
+}
+
+fn render_dialog(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-dialog-backdrop")
+    if n.open {
+        builder.StringBuilder.append_cstr(sb, c" fm-open")
+    }
+    builder.StringBuilder.append_cstr(sb, c"\"")
+    put_attr(sb, c"id", n.id)
+    builder.StringBuilder.append_cstr(sb, c"><div class=\"fm-dialog\" role=\"dialog\" aria-modal=\"true\"")
+    if !node.is_empty(n.title) {
+        builder.StringBuilder.append_cstr(sb, c" aria-label=\"")
+        escape_cstr_into(sb, n.title)
+        builder.StringBuilder.append_cstr(sb, c"\"")
+    }
+    builder.StringBuilder.append_cstr(sb, c"><div class=\"fm-dialog-head\"><h2>")
+    escape_cstr_into(sb, n.title)
+    builder.StringBuilder.append_cstr(sb, c"</h2><button type=\"button\" class=\"fm-dialog-close\" data-fm-close=\"")
+    escape_cstr_into(sb, n.id)
+    builder.StringBuilder.append_cstr(sb, c"\" aria-label=\"Close\">&times;</button></div><div class=\"fm-dialog-body\">")
+    render_children(sb, n)
+    builder.StringBuilder.append_cstr(sb, c"</div></div></div>")
+}
+
+fn render_menu(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-menu\"><button type=\"button\" class=\"fm-menu-trigger\">")
+    escape_cstr_into(sb, n.label)
+    builder.StringBuilder.append_cstr(sb, c"</button><div class=\"fm-menu-items\">")
+    render_children(sb, n)
+    builder.StringBuilder.append_cstr(sb, c"</div></div>")
+}
+
+fn render_menu_item(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    builder.StringBuilder.append_cstr(sb, c"<button type=\"button\" class=\"fm-menu-item\" data-fm-action=\"")
+    escape_cstr_into(sb, n.name)
+    builder.StringBuilder.append_cstr(sb, c"\">")
+    escape_cstr_into(sb, n.label)
+    builder.StringBuilder.append_cstr(sb, c"</button>")
+}
+
+pub fn render_node(sb: builder.StringBuilder, n: ref node.Node) void = trust {
+    if n.kind == node.Kind.Header {
+        render_header(sb, n)
+    } elif n.kind == node.Kind.Section {
+        render_section(sb, n)
+    } elif n.kind == node.Kind.Row {
+        builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-row\">")
+        render_children(sb, n)
+        builder.StringBuilder.append_cstr(sb, c"</div>")
+    } elif n.kind == node.Kind.Actions {
+        builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-actions\">")
+        render_children(sb, n)
+        builder.StringBuilder.append_cstr(sb, c"</div>")
+    } elif n.kind == node.Kind.Field {
+        render_field(sb, n)
+    } elif n.kind == node.Kind.Button {
+        render_button(sb, n)
+    } elif n.kind == node.Kind.Table {
+        render_table(sb, n)
+    } elif n.kind == node.Kind.TableRow {
+        render_table_row(sb, n)
+    } elif n.kind == node.Kind.Cell {
+        render_cell(sb, n)
+    } elif n.kind == node.Kind.Tabs {
+        render_tabs(sb, n)
+    } elif n.kind == node.Kind.Tab {
+        builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-tabpanel\">")
+        render_children(sb, n)
+        builder.StringBuilder.append_cstr(sb, c"</div>")
+    } elif n.kind == node.Kind.Progress {
+        render_progress(sb, n)
+    } elif n.kind == node.Kind.Dialog {
+        render_dialog(sb, n)
+    } elif n.kind == node.Kind.Menu {
+        render_menu(sb, n)
+    } elif n.kind == node.Kind.MenuItem {
+        render_menu_item(sb, n)
+    } elif n.kind == node.Kind.Text {
+        builder.StringBuilder.append_cstr(sb, c"<p class=\"fm-text\"")
+        passthrough_attrs(sb, n)
+        builder.StringBuilder.append_cstr(sb, c">")
+        if !node.is_empty(n.text) {
+            escape_cstr_into(sb, n.text)
+        }
+        render_children(sb, n)
+        builder.StringBuilder.append_cstr(sb, c"</p>")
+    } elif n.kind == node.Kind.Spacer {
+        builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-spacer\"></span>")
+    } elif n.kind == node.Kind.Divider {
+        builder.StringBuilder.append_cstr(sb, c"<hr class=\"fm-divider\">")
+    } elif n.kind == node.Kind.Badge {
+        builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-badge\">")
+        escape_cstr_into(sb, n.text)
+        builder.StringBuilder.append_cstr(sb, c"</span>")
+    } elif n.kind == node.Kind.Hidden {
+        builder.StringBuilder.append_cstr(sb, c"<input type=\"hidden\"")
+        put_attr(sb, c"name", n.name)
+        put_attr(sb, c"value", n.value)
+        builder.StringBuilder.append_cstr(sb, c">")
+    }
+}
+
+fn render_styles(sb: builder.StringBuilder) void = trust {
+    builder.StringBuilder.append(sb, assets.base_css())
+    builder.StringBuilder.append_cstr(sb, c"\n")
+    builder.StringBuilder.append(sb, assets.linux_css())
+    builder.StringBuilder.append_cstr(sb, c"\n")
+    builder.StringBuilder.append(sb, assets.darwin_css())
+    builder.StringBuilder.append_cstr(sb, c"\n")
+    builder.StringBuilder.append(sb, assets.windows_css())
+}
+
+fn effective_theme(theme: i32) i32 = {
+    if theme == 1 || theme == 2 || theme == 3 {
+        return theme
+    }
+    return host_theme()
+}
+
+pub fn render(
+    root: ref node.Node,
+    title: ref u8,
+    theme: i32
+) builder.StringBuilder = trust {
+    val sb = builder.StringBuilder.new()
+    val th: i32 = effective_theme(theme)
+    builder.StringBuilder.append_cstr(sb, c"<!doctype html><html lang=\"en\" class=\"")
+    builder.StringBuilder.append(sb, theme_class(th))
+    builder.StringBuilder.append_cstr(sb, c" ")
+    builder.StringBuilder.append(sb, platform_class(th))
+    builder.StringBuilder.append_cstr(sb, c"\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"color-scheme\" content=\"light dark\"><title>")
+    escape_cstr_into(sb, title)
+    builder.StringBuilder.append_cstr(sb, c"</title><style>")
+    render_styles(sb)
+    builder.StringBuilder.append_cstr(sb, c"</style></head><body class=\"fm-body\"><div class=\"fm-app\">")
+
+    val header: mut ref node.Node = none
+    if root.first != none && root.first.kind == node.Kind.Header {
+        header = root.first
+        render_header(sb, header as ref node.Node)
+    }
+
+    builder.StringBuilder.append_cstr(sb, c"<main class=\"fm-main\"><form class=\"fm-form\" data-fm-form")
+    put_attr(sb, c"data-fm-name", root.name)
+    put_attr(sb, c"action", root.action)
+    put_attr(sb, c"method", root.method)
+    if root.attrs != none {
+        val cur: mut ref node.Attr = root.attrs
+        for {
+            if cur == none {
+                break
+            }
+            val a: ref node.Attr = cur as ref node.Attr
+            if @strcmp(a.name, c"novalidate") == 0 {
+                builder.StringBuilder.append_cstr(sb, c" novalidate")
+            }
+            cur = a.next
+        }
+    }
+    builder.StringBuilder.append_cstr(sb, c">")
+
+    val cur: mut ref node.Node = root.first
+    for {
+        if cur == none {
+            break
+        }
+        val c: ref node.Node = cur as ref node.Node
+        if c.kind != node.Kind.Header {
+            render_node(sb, c)
+        }
+        cur = c.next
+    }
+
+    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-busy-overlay\"><div class=\"fm-spinner\"></div></div>")
+    builder.StringBuilder.append_cstr(sb, c"</form></main></div><div class=\"fm-toasts\"></div>")
+    builder.StringBuilder.append_cstr(sb, c"<script>")
+    builder.StringBuilder.append(sb, assets.runtime_js())
+    builder.StringBuilder.append_cstr(sb, c"</script></body></html>")
+    return sb
+}

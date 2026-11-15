@@ -1,0 +1,44 @@
+<form name="profile" title="Profile" width="820" height="780" theme="auto">
+  <header title="Profile" subtitle="Manage your account">
+    <button action="help" label="Help" variant="ghost" />
+  </header>
+
+  <section title="Public profile" description="This information is visible to other members.">
+    <row>
+      <field name="display_name" label="Display name" required="true" placeholder="Ada Lovelace" />
+      <field name="username" label="Username" required="true" help="Letters, numbers, and underscores." placeholder="ada" />
+    </row>
+    <field name="email" type="email" label="Email" required="true" placeholder="ada@example.com" />
+    <field name="bio" type="textarea" label="Bio" rows="4" placeholder="A few words about yourself" />
+    <select name="timezone" label="Timezone" required="true">
+      <option value="utc">UTC</option>
+      <option value="cet">Central European Time</option>
+      <option value="est">Eastern Time</option>
+      <option value="pst">Pacific Time</option>
+    </select>
+    <field name="visibility" type="radio" label="Profile visibility" value="public">
+      <option value="public">Public</option>
+      <option value="unlisted">Unlisted</option>
+      <option value="private">Private</option>
+    </field>
+  </section>
+
+  <section title="Preferences" description="Tune how the application feels.">
+    <field name="density" type="range" label="Interface density" min="1" max="5" value="3" />
+    <field name="accent" type="color" label="Accent color" value="#3584e4" />
+    <field name="newsletter" type="checkbox" label="Email me product news" />
+    <field name="tips" type="checkbox" label="Show occasional tips" checked="true" />
+  </section>
+
+  <actions>
+    <button action="cancel" label="Cancel" variant="ghost" />
+    <button action="save" label="Save changes" variant="primary" submit="true" />
+  </actions>
+
+  <dialog id="saved" title="Profile saved">
+    <p>Your profile has been updated.</p>
+    <actions>
+      <button action="close-saved" label="Close" variant="primary" />
+    </actions>
+  </dialog>
+</form>

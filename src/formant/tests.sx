@@ -1,0 +1,109 @@
+/// Headless tests for the template reader and HTML renderer.
+
+val mem        = use("mem.sx")
+val builder    = use("std/string/builder")
+val ft         = use("ft.sx")
+val html       = use("html.sx")
+val node       = use("node.sx")
+val str        = use("std/string")
+val xml        = use("xml.sx")
+
+fn arena_or_die() ref mem.Bump = trust {
+    val res = mem.new(65536 as usize)
+    match res {
+        ok a => {
+            return a as ref mem.Bump
+        }
+        err _ => {
+            assert false
+            return none
+        }
+    }
+}
+
+test "xml parses attributes and entities" {
+    trust {
+        val arena = arena_or_die()
+        val src: str.StringView = \\<form title="A &amp; B">
+\\  <field name="x" label="X &lt;1&gt;" />
+\\</form>
+        val parsed = xml.parse(arena, src)
+        match parsed {
+            ok root => {
+                assert str.eql_cstr(root.name, c"form")
+                assert str.eql_cstr(xml.attr(root, "title"), c"A & B")
+                assert root.first != none
+                assert str.eql_cstr(root.first.name, c"field")
+                assert str.eql_cstr(xml.attr(root.first, "label"), c"X <1>")
+            }
+            err _ => {
+                assert false
+            }
+        }
+        mem.free(arena)
+    }
+}
+
+test "ft maps a form tree" {
+    trust {
+        val arena = arena_or_die()
+        val src: str.StringView = \\<form name="contact" title="Contact" width="720" height="600" theme="linux">
+\\  <section title="Details">
+\\    <row>
+\\      <field name="first" label="First name" required="true" />
+\\      <field name="email" type="email" label="Email" />
+\\    </row>
+\\    <select name="country" label="Country">
+\\      <option value="us">United States</option>
+\\      <option value="ca">Canada</option>
+\\    </select>
+\\  </section>
+\\  <actions>
+\\    <button name="save" label="Save" variant="primary" submit="true" />
+\\  </actions>
+\\</form>
+        val parsed = ft.parse(arena, src)
+        match parsed {
+            ok root => {
+                assert @strcmp(root.name, c"contact") == 0
+                assert root.width == 720
+                assert root.height == 600
+                assert root.first != none
+                assert @strcmp(root.first.title, c"Details") == 0
+            }
+            err _ => {
+                assert false
+            }
+        }
+        mem.free(arena)
+    }
+}
+
+test "html renderer escapes and emits controls" {
+    trust {
+        val arena = arena_or_die()
+        val src: str.StringView = \\<form name="contact" title="Contact">
+\\  <section title="A &amp; B">
+\\    <field name="email" type="email" label="Email" required="true" />
+\\  </section>
+\\</form>
+        val parsed = ft.parse(arena, src)
+        match parsed {
+            ok root => {
+                val n: ref node.Node = root as ref node.Node
+                val sb = html.render(n, c"Contact", 1)
+                val text: str.StringView = str.view(sb.ptr, sb.len)
+                assert str.contains(text, "data-fm-form")
+                assert str.contains(text, "type=\"email\"")
+                assert str.contains(text, "A &amp; B")
+                assert str.contains(text, "fm-theme-linux")
+                assert str.contains(text, "formant_event")
+                builder.StringBuilder.free(sb)
+            }
+            err _ => {
+                assert false
+            }
+        }
+        mem.free(arena)
+    }
+}

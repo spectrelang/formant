@@ -1,0 +1,38 @@
+/// Embedded CSS and JavaScript assets for Formant.
+
+val str = use("std/string")
+
+val base_css_ptr: ref u8 = @embed("assets/base.css")
+val base_css_len: i64 = @embedlen("assets/base.css")
+
+val linux_css_ptr: ref u8 = @embed("assets/linux.css")
+val linux_css_len: i64 = @embedlen("assets/linux.css")
+
+val darwin_css_ptr: ref u8 = @embed("assets/darwin.css")
+val darwin_css_len: i64 = @embedlen("assets/darwin.css")
+
+val windows_css_ptr: ref u8 = @embed("assets/windows.css")
+val windows_css_len: i64 = @embedlen("assets/windows.css")
+
+val runtime_js_ptr: ref u8 = @embed("assets/runtime.js")
+val runtime_js_len: i64 = @embedlen("assets/runtime.js")
+
+pub fn base_css() str.StringView = {
+    return str.view(base_css_ptr, base_css_len)
+}
+
+pub fn linux_css() str.StringView = {
+    return str.view(linux_css_ptr, linux_css_len)
+}
+
+pub fn darwin_css() str.StringView = {
+    return str.view(darwin_css_ptr, darwin_css_len)
+}
+
+pub fn windows_css() str.StringView = {
+    return str.view(windows_css_ptr, windows_css_len)
+}
+
+pub fn runtime_js() str.StringView = {
+    return str.view(runtime_js_ptr, runtime_js_len)
+}

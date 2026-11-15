@@ -1,0 +1,68 @@
+/// Bindings for the webview C API (https://github.com/webview/webview).
+///
+/// The library is compiled as a C++ object by scripts/build_webview.sh and
+/// linked into the executable. Only the public C surface is used here.
+
+when linux {
+    // Keep the linker from dropping libraries that appear before the object
+    // files on the command line.
+    link "-Wl,--no-as-needed"
+    lib "webkit2gtk-4.1"
+    link "-lstdc++"
+}
+
+when darwin {
+    link "-framework"
+    link "WebKit"
+    link "-framework"
+    link "Cocoa"
+    link "-ldl"
+    link "-lc++"
+}
+
+when windows {
+    link "ole32.lib"
+    link "shell32.lib"
+    link "shlwapi.lib"
+    link "user32.lib"
+    link "advapi32.lib"
+    link "version.lib"
+    link "WebView2LoaderStatic.lib"
+}
+
+pub val HINT_NONE: i32 = 0
+pub val HINT_MIN: i32 = 1
+pub val HINT_MAX: i32 = 2
+pub val HINT_FIXED: i32 = 3
+
+pub val ERROR_OK: i32 = 0
+
+pub extern (C) fn create(debug: i32, window: ref void) ref void = "webview_create"
+pub extern (C) fn destroy(w: ref void) i32 = "webview_destroy"
+pub extern (C) fn run(w: ref void) i32 = "webview_run"
+pub extern (C) fn terminate(w: ref void) i32 = "webview_terminate"
+pub extern (C) fn dispatch(w: ref void, fnptr: fn(ref void, ref void) void, arg: ref void) i32 = "webview_dispatch"
+pub extern (C) fn get_window(w: ref void) ref void = "webview_get_window"
+
+pub extern (C) fn set_title(w: ref void, title: ref u8) i32 = "webview_set_title"
+pub extern (C) fn set_size(w: ref void, width: i32, height: i32, hints: i32) i32 = "webview_set_size"
+pub extern (C) fn navigate(w: ref void, url: ref u8) i32 = "webview_navigate"
+pub extern (C) fn set_html(w: ref void, html: ref u8) i32 = "webview_set_html"
+pub extern (C) fn init(w: ref void, js: ref u8) i32 = "webview_init"
+pub extern (C) fn eval(w: ref void, js: ref u8) i32 = "webview_eval"
+
+pub extern (C) fn bind(
+    w: ref void,
+    name: ref u8,
+    cb: fn(ref u8, ref u8, ref void) void,
+    arg: ref void
+) i32 = "webview_bind"
+
+pub extern (C) fn unbind(w: ref void, name: ref u8) i32 = "webview_unbind"
+
+pub extern (C) fn webview_return(
+    w: ref void,
+    id: ref u8,
+    status: i32,
+    result: ref u8
+) i32 = "webview_return"

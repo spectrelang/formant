@@ -1,0 +1,483 @@
+/// Reader for .ft form templates.
+///
+/// A template is a small XML dialect. The root element is <form>; the
+/// remaining elements map onto Formant components. See examples/*.ft for a
+/// complete template.
+
+val mem        = use("mem.sx")
+val node       = use("node.sx")
+val str        = use("std/string")
+val xml        = use("xml.sx")
+
+pub type FtError = {
+    line: i32
+    message: str.StringView
+}
+
+type Ctx = {
+    failed: mut bool
+    line: mut i32
+    message: mut str.StringView
+}
+
+fn fail(ctx: mut ref Ctx, x: ref xml.XNode, message: str.StringView) void = {
+    if ctx.failed {
+        return
+    }
+    ctx.failed = true
+    ctx.line = x.line
+    ctx.message = message
+}
+
+fn eql(a: str.StringView, b: str.StringView) bool = trust {
+    return str.eql(a, b)
+}
+
+fn eql_cstr(a: str.StringView, b: ref u8) bool = trust {
+    return str.eql_cstr(a, b)
+}
+
+fn attr(x: ref xml.XNode, name: str.StringView) str.StringView = trust {
+    return xml.attr(x, name)
+}
+
+fn parse_bool(v: str.StringView) bool = {
+    if v.len <= 0 {
+        return false
+    }
+    return trust str.eql_cstr(v, c"true")
+        || trust str.eql_cstr(v, c"1")
+        || trust str.eql_cstr(v, c"yes")
+        || trust str.eql_cstr(v, c"on")
+}
+
+fn parse_int(v: str.StringView, fallback: i32) i32 = trust {
+    if v.len <= 0 {
+        return fallback
+    }
+    val n: mut i64 = 0
+    val negative: mut bool = false
+    val i: mut i64 = 0
+    val first: u8 = @load8(v.ptr) as u8
+    if first == 45 {
+        negative = true
+        i = 1
+    }
+    for {
+        if i >= v.len {
+            break
+        }
+        val c: u8 = @load8(@ptradd(v.ptr, i)) as u8
+        if c < 48 || c > 57 {
+            return fallback
+        }
+        n = n * 10 + (c - 48) as i64
+        i++
+    }
+    if negative {
+        n = -n
+    }
+    return n as i32
+}
+
+fn variant_of(v: str.StringView) node.Variant = trust {
+    if str.eql_cstr(v, c"primary") {
+        return node.Variant.Primary
+    }
+    if str.eql_cstr(v, c"danger") {
+        return node.Variant.Danger
+    }
+    if str.eql_cstr(v, c"ghost") {
+        return node.Variant.Ghost
+    }
+    if str.eql_cstr(v, c"link") {
+        return node.Variant.Link
+    }
+    return node.Variant.Secondary
+}
+
+fn field_kind_of(v: str.StringView) node.FieldKind = trust {
+    if str.eql_cstr(v, c"email") {
+        return node.FieldKind.Email
+    }
+    if str.eql_cstr(v, c"password") {
+        return node.FieldKind.Password
+    }
+    if str.eql_cstr(v, c"number") {
+        return node.FieldKind.Number
+    }
+    if str.eql_cstr(v, c"textarea") {
+        return node.FieldKind.Textarea
+    }
+    if str.eql_cstr(v, c"select") {
+        return node.FieldKind.Select
+    }
+    if str.eql_cstr(v, c"checkbox") {
+        return node.FieldKind.Checkbox
+    }
+    if str.eql_cstr(v, c"radio") {
+        return node.FieldKind.Radio
+    }
+    if str.eql_cstr(v, c"range") || str.eql_cstr(v, c"slider") {
+        return node.FieldKind.Range
+    }
+    if str.eql_cstr(v, c"date") {
+        return node.FieldKind.Date
+    }
+    if str.eql_cstr(v, c"time") {
+        return node.FieldKind.Time
+    }
+    if str.eql_cstr(v, c"color") {
+        return node.FieldKind.Color
+    }
+    if str.eql_cstr(v, c"file") {
+        return node.FieldKind.File
+    }
+    if str.eql_cstr(v, c"hidden") {
+        return node.FieldKind.Hidden
+    }
+    return node.FieldKind.Text
+}
+
+fn theme_of(v: str.StringView) i32 = trust {
+    if str.eql_cstr(v, c"linux") || str.eql_cstr(v, c"gtk") {
+        return 1
+    }
+    if str.eql_cstr(v, c"darwin") || str.eql_cstr(v, c"macos") || str.eql_cstr(v, c"mac") {
+        return 2
+    }
+    if str.eql_cstr(v, c"windows") || str.eql_cstr(v, c"win") || str.eql_cstr(v, c"win32") {
+        return 3
+    }
+    return 0
+}
+
+fn copy_common(b: ref mem.Bump, x: ref xml.XNode, n: mut ref node.Node) void = trust {
+    val cls: str.StringView = xml.attr(x, "class")
+    if cls.len > 0 {
+        node.attr_set(b, n, "class", cls)
+    }
+    val style: str.StringView = xml.attr(x, "style")
+    if style.len > 0 {
+        node.attr_set(b, n, "style", style)
+    }
+    val ident: str.StringView = xml.attr(x, "id")
+    if ident.len > 0 {
+        n.id = node.strdup(b, ident)
+        node.attr_set(b, n, "id", ident)
+    }
+    val aria: str.StringView = xml.attr(x, "aria-label")
+    if aria.len > 0 {
+        node.attr_set(b, n, "aria-label", aria)
+    }
+}
+
+fn copy_strings(b: ref mem.Bump, x: ref xml.XNode, n: mut ref node.Node) void = trust {
+    n.name = node.strdup(b, attr(x, "name"))
+    n.label = node.strdup(b, attr(x, "label"))
+    n.value = node.strdup(b, attr(x, "value"))
+    n.placeholder = node.strdup(b, attr(x, "placeholder"))
+    n.help = node.strdup(b, attr(x, "help"))
+    n.title = node.strdup(b, attr(x, "title"))
+    n.subtitle = node.strdup(b, attr(x, "description"))
+    if node.is_empty(n.subtitle) {
+        n.subtitle = node.strdup(b, attr(x, "subtitle"))
+    }
+    n.action = node.strdup(b, attr(x, "action"))
+    n.method = node.strdup(b, attr(x, "method"))
+    n.min = node.strdup(b, attr(x, "min"))
+    n.max = node.strdup(b, attr(x, "max"))
+    n.step = node.strdup(b, attr(x, "step"))
+    n.rows = node.strdup(b, attr(x, "rows"))
+    n.span = parse_int(attr(x, "span"), 1)
+    n.required = parse_bool(attr(x, "required"))
+    n.disabled = parse_bool(attr(x, "disabled"))
+    n.checked = parse_bool(attr(x, "checked"))
+    n.selected = parse_bool(attr(x, "selected"))
+    n.submit = parse_bool(attr(x, "submit"))
+    n.open = parse_bool(attr(x, "open"))
+}
+
+fn add_columns(b: ref mem.Bump, spec_text: str.StringView, n: mut ref node.Node) void = trust {
+    if spec_text.len <= 0 {
+        return
+    }
+    val start: mut i64 = 0
+    val i: mut i64 = 0
+    for {
+        val at_end: bool = i >= spec_text.len
+        val c: mut u8 = 0
+        if !at_end {
+            c = @load8(@ptradd(spec_text.ptr, i)) as u8
+        }
+        if at_end || c == 124 || c == 44 {
+            if i > start {
+                val item: str.StringView = str.slice(spec_text, start, i)
+                val colon_opt = str.find(item, ":")
+                if colon_opt is some at {
+                    node.column_add(
+                        b,
+                        n,
+                        str.slice(item, 0, at),
+                        str.slice(item, at + 1, item.len)
+                    )
+                } else {
+                    node.column_add(b, n, item, item)
+                }
+            }
+            start = i + 1
+        }
+        if at_end {
+            break
+        }
+        i++
+    }
+}
+
+fn add_option(b: ref mem.Bump, x: ref xml.XNode, n: mut ref node.Node) void = trust {
+    val text: str.StringView = x.text
+    val value: mut str.StringView = attr(x, "value")
+    if value.len <= 0 {
+        value = text
+    }
+    val label: mut str.StringView = attr(x, "label")
+    if label.len <= 0 {
+        label = text
+    }
+    node.option_add(b, n, value, label)
+}
+
+fn map_children(b: ref mem.Bump, ctx: mut ref Ctx, x: ref xml.XNode, n: mut ref node.Node) void = trust {
+    val cur: mut ref xml.XNode = x.first
+    for {
+        if cur == none {
+            break
+        }
+        val c: ref xml.XNode = cur as ref xml.XNode
+        if n.kind == node.Kind.Field
+        && (n.field == node.FieldKind.Select || n.field == node.FieldKind.Radio) {
+            if eql(c.name, "option") {
+                add_option(b, c, n)
+            } else {
+                fail(ctx, c, "only <option> is allowed inside a select or radio field")
+            }
+        } elif n.kind == node.Kind.Table {
+            if eql(c.name, "column") {
+                val label: mut str.StringView = attr(c, "label")
+                if label.len <= 0 {
+                    label = c.text
+                }
+                val key: str.StringView = attr(c, "name")
+                node.column_add(b, n, key, label)
+            } else {
+                val child: ref node.Node = map_element(b, ctx, c)
+                if child == none {
+                    return
+                }
+                node.append(n, child)
+            }
+        } else {
+            val child: ref node.Node = map_element(b, ctx, c)
+            if child == none {
+                return
+            }
+            node.append(n, child)
+        }
+        cur = cur.next
+    }
+}
+
+fn map_element(b: ref mem.Bump, ctx: mut ref Ctx, x: ref xml.XNode) ref node.Node = trust {
+    val kind: mut node.Kind = node.Kind.Text
+    val matcher: mut bool = false
+
+    if eql(x.name, "form") {
+        kind = node.Kind.Form
+        matcher = true
+    } elif eql(x.name, "header") {
+        kind = node.Kind.Header
+        matcher = true
+    } elif eql(x.name, "section") {
+        kind = node.Kind.Section
+        matcher = true
+    } elif eql(x.name, "row") {
+        kind = node.Kind.Row
+        matcher = true
+    } elif eql(x.name, "actions") {
+        kind = node.Kind.Actions
+        matcher = true
+    } elif eql(x.name, "field") {
+        kind = node.Kind.Field
+        matcher = true
+    } elif eql(x.name, "input") || eql(x.name, "textarea") || eql(x.name, "select")
+        || eql(x.name, "checkbox") || eql(x.name, "radio") || eql(x.name, "range") {
+        kind = node.Kind.Field
+        matcher = true
+    } elif eql(x.name, "button") {
+        kind = node.Kind.Button
+        matcher = true
+    } elif eql(x.name, "table") {
+        kind = node.Kind.Table
+        matcher = true
+    } elif eql(x.name, "tr") {
+        kind = node.Kind.TableRow
+        matcher = true
+    } elif eql(x.name, "td") || eql(x.name, "cell") {
+        kind = node.Kind.Cell
+        matcher = true
+    } elif eql(x.name, "tabs") {
+        kind = node.Kind.Tabs
+        matcher = true
+    } elif eql(x.name, "tab") {
+        kind = node.Kind.Tab
+        matcher = true
+    } elif eql(x.name, "progress") {
+        kind = node.Kind.Progress
+        matcher = true
+    } elif eql(x.name, "dialog") {
+        kind = node.Kind.Dialog
+        matcher = true
+    } elif eql(x.name, "menu") {
+        kind = node.Kind.Menu
+        matcher = true
+    } elif eql(x.name, "item") || eql(x.name, "menuitem") {
+        kind = node.Kind.MenuItem
+        matcher = true
+    } elif eql(x.name, "p") || eql(x.name, "text") {
+        kind = node.Kind.Text
+        matcher = true
+    } elif eql(x.name, "spacer") {
+        kind = node.Kind.Spacer
+        matcher = true
+    } elif eql(x.name, "divider") || eql(x.name, "hr") {
+        kind = node.Kind.Divider
+        matcher = true
+    } elif eql(x.name, "badge") {
+        kind = node.Kind.Badge
+        matcher = true
+    } elif eql(x.name, "hidden") {
+        kind = node.Kind.Hidden
+        matcher = true
+    }
+
+    if !matcher {
+        fail(ctx, x, "unknown template element")
+        return none
+    }
+
+    val n: ref node.Node = node.new(b, kind)
+    if n == none {
+        fail(ctx, x, "out of memory")
+        return none
+    }
+    val mn: mut ref node.Node = n as mut ref node.Node
+    copy_strings(b, x, mn)
+    copy_common(b, x, mn)
+    mn.variant = variant_of(attr(x, "variant"))
+
+    if kind == node.Kind.Field {
+        val tag_kind: mut node.FieldKind = node.FieldKind.Text
+        if eql(x.name, "textarea") {
+            tag_kind = node.FieldKind.Textarea
+        } elif eql(x.name, "select") {
+            tag_kind = node.FieldKind.Select
+        } elif eql(x.name, "checkbox") {
+            tag_kind = node.FieldKind.Checkbox
+        } elif eql(x.name, "radio") {
+            tag_kind = node.FieldKind.Radio
+        } elif eql(x.name, "range") {
+            tag_kind = node.FieldKind.Range
+        } elif eql(x.name, "input") {
+            tag_kind = field_kind_of(attr(x, "type"))
+        }
+        val explicit: str.StringView = attr(x, "type")
+        if explicit.len > 0 && eql(x.name, "field") {
+            tag_kind = field_kind_of(explicit)
+        }
+        mn.field = tag_kind
+    } elif kind == node.Kind.Button || kind == node.Kind.MenuItem {
+        if node.is_empty(mn.label) {
+            mn.label = node.strdup(b, x.text)
+        }
+        if node.is_empty(mn.name) {
+            mn.name = node.strdup(b, attr(x, "action"))
+        }
+    } elif kind == node.Kind.Tab {
+        if node.is_empty(mn.label) {
+            mn.label = node.strdup(b, x.text)
+        }
+    } elif kind == node.Kind.Menu {
+        if node.is_empty(mn.label) {
+            mn.label = node.strdup(b, x.text)
+        }
+    } elif kind == node.Kind.Text || kind == node.Kind.Badge {
+        if x.text.len > 0 {
+            mn.text = node.strdup(b, x.text)
+        }
+    } elif kind == node.Kind.Cell {
+        if x.text.len > 0 {
+            mn.text = node.strdup(b, x.text)
+        }
+    } elif kind == node.Kind.Dialog {
+        if node.is_empty(mn.id) {
+            mn.id = node.strdup(b, attr(x, "name"))
+        }
+        if node.is_empty(mn.title) {
+            mn.title = node.strdup(b, attr(x, "label"))
+        }
+    } elif kind == node.Kind.Progress {
+        if node.is_empty(mn.label) {
+            mn.label = node.strdup(b, x.text)
+        }
+    } elif kind == node.Kind.Table {
+        add_columns(b, attr(x, "columns"), mn)
+    }
+
+    map_children(b, ctx, x, mn)
+    if ctx.failed {
+        return none
+    }
+    return n
+}
+
+pub fn parse(
+    b: ref mem.Bump,
+    src: str.StringView
+) result[ref node.Node, FtError] = trust {
+    val root_res = xml.parse(b, src)
+    match root_res {
+        err e => {
+            return err FtError{line: e.line, message: e.message}
+        }
+        ok root => {
+            if !eql(root.name, "form") {
+                return err FtError{line: root.line, message: "the root element must be <form>"}
+            }
+            val ctx: mut ref Ctx = @alloc(@sizeof(Ctx) as usize) as mut ref Ctx
+            if ctx == none {
+                return err FtError{line: 0, message: "out of memory"}
+            }
+            @memset(ctx as ref void, 0, @sizeof(Ctx) as usize)
+                    ctx.failed = false
+            ctx.line = root.line
+            ctx.message = "invalid template"
+            val n: ref node.Node = map_element(b, ctx, root)
+            if ctx.failed || n == none {
+                val line: i32 = ctx.line
+                val msg: str.StringView = ctx.message
+                @free(ctx as ref void)
+                return err FtError{line: line, message: msg}
+            }
+            val mn: mut ref node.Node = n as mut ref node.Node
+            mn.kind = node.Kind.Form
+            if node.is_empty(mn.name) {
+                mn.name = node.strdup(b, "form")
+            }
+            mn.width = parse_int(attr(root, "width"), 0)
+            mn.height = parse_int(attr(root, "height"), 0)
+            mn.theme = theme_of(attr(root, "theme"))
+            @free(ctx as ref void)
+            return ok n
+        }
+    }
+}

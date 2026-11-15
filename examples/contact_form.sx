@@ -1,0 +1,62 @@
+/// A compact form built entirely with the function-call API.
+
+val formant = use("../src/formant/formant.sx")
+val stdio   = use("std/stdio")
+val str     = use("std/string")
+
+fn on_event(ev: formant.Event, _: ref void) void = trust {
+    if str.eql_cstr(ev.kind, c"submit") {
+        val name: str.StringView = formant.value(ev.values, "name")
+        val email: str.StringView = formant.value(ev.values, "email")
+        if name.len == 0 {
+            formant.set_error(ev.form, "name", "Your name is required.")
+            return
+        }
+        if !str.contains(email, "@") {
+            formant.set_error(ev.form, "email", "Enter a valid email address.")
+            return
+        }
+        formant.clear_errors(ev.form)
+        formant.toast(ev.form, "Subscribed. Welcome aboard.", "success")
+        formant.set_busy(ev.form, false)
+    }
+}
+
+pub fn main() i32 = trust {
+    match formant.new_form("Newsletter", 720, 640) {
+        err e => {
+            stdio.print("formant: {s}\n", {e.message})
+            return 1
+        }
+        ok f => {
+            formant.header(f, "Join the newsletter", "One short email each month")
+            formant.end(f)
+
+            formant.section(f, "Your details", "")
+            formant.text_input(f, "name", "Name")
+            formant.required(f)
+            formant.placeholder(f, "Ada Lovelace")
+            formant.email_input(f, "email", "Email")
+            formant.required(f)
+            formant.placeholder(f, "ada@example.com")
+            formant.select(
+                f,
+                "frequency",
+                "Frequency",
+                "weekly:Every week|monthly:Once a month|quarterly:Four times a year"
+            )
+            formant.checkbox(f, "terms", "I agree to receive email")
+            formant.required(f)
+            formant.end(f)
+
+            formant.actions(f)
+            formant.submit_button(f, "subscribe", "Subscribe")
+            formant.end(f)
+
+            formant.on_submit(f, on_event, none)
+            val code: i32 = formant.run(f)
+            formant.free(f)
+            return code
+        }
+    }
+}
