@@ -538,7 +538,11 @@ fn render_default_titlebar(sb: builder.StringBuilder, title: ref u8) void = trus
 }
 
 fn render_header(sb: builder.StringBuilder, n: ref node.Node) void = trust {
-    builder.StringBuilder.append_cstr(sb, c"<header class=\"fm-headerbar\">")
+    builder.StringBuilder.append_cstr(sb, c"<header class=\"fm-headerbar")
+    if !node.is_empty(n.subtitle) {
+        builder.StringBuilder.append_cstr(sb, c" fm-has-subtitle")
+    }
+    builder.StringBuilder.append_cstr(sb, c"\">")
     builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-headerbar-title\">")
     if !node.is_empty(n.title) {
         builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-title\">")
