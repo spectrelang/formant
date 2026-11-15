@@ -3,7 +3,8 @@ rem Compile the webview C++ core into %OUT%\webview.o on Windows.
 rem Invoked by sx.mod from inside lib\webview.
 rem Set CXX=clang++ or CXX=cl to choose a compiler.
 rem Set WEBVIEW2_INCLUDE to the WebView2 SDK include directory when it is
-rem not already on the default include path.
+rem not already on the default include path. If the SDK cannot be found, it
+rem is downloaded from NuGet into .sx\webview2.
 
 setlocal enabledelayedexpansion
 
@@ -27,15 +28,33 @@ if not exist "%SRC%" (
 if not exist "%OUT%" mkdir "%OUT%"
 
 if not "%WEBVIEW2_INCLUDE%"=="" (
-    set WV2_INC=%WEBVIEW2_INCLUDE%
-) else (
-    set WV2_INC=
-    if exist "%USERPROFILE%\.nuget\packages\microsoft.web.webview2" (
-        for /d %%d in ("%USERPROFILE%\.nuget\packages\microsoft.web.webview2\*") do (
-            if exist "%%d\build\native\include\WebView2.h" set WV2_INC=%%d\build\native\include
-        )
+    set "WV2_INC=%WEBVIEW2_INCLUDE%"
+    goto :webview2_ready
+)
+
+set "WV2_INC="
+if exist "%USERPROFILE%\.nuget\packages\microsoft.web.webview2" (
+    for /d %%d in ("%USERPROFILE%\.nuget\packages\microsoft.web.webview2\*") do (
+        if exist "%%d\build\native\include\WebView2.h" set "WV2_INC=%%d\build\native\include"
     )
 )
+if defined WV2_INC goto :webview2_ready
+
+set "WV2_CACHE=%ROOT%\.sx\webview2"
+if exist "%WV2_CACHE%\build\native\include\WebView2.h" (
+    set "WV2_INC=%WV2_CACHE%\build\native\include"
+    goto :webview2_ready
+)
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\scripts\get_webview2.ps1" -Destination "%WV2_CACHE%"
+if errorlevel 1 (
+    echo build_webview.bat: could not locate or download the WebView2 SDK 1>&2
+    echo set WEBVIEW2_INCLUDE to the SDK's build\native\include directory 1>&2
+    exit /b 1
+)
+set "WV2_INC=%WV2_CACHE%\build\native\include"
+
+:webview2_ready
 
 if defined CXX (
     set CXX_BIN=%CXX%
