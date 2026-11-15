@@ -40,7 +40,7 @@ mkdir -p "$OUT"
 OS=$(uname -s 2>/dev/null || echo unknown)
 case "$OS" in
     Darwin)
-        "$CXX_BIN" -std=c++11 -O2 -fPIC -DWEBVIEW_STATIC \
+        "$CXX_BIN" -std=c++17 -O2 -fPIC -DWEBVIEW_STATIC \
             -I"$INC" -c "$SRC" -o "$OUT/webview.o"
 
         if command -v clang >/dev/null 2>&1; then
@@ -66,11 +66,11 @@ case "$OS" in
         fi
         CFLAGS=$(pkg-config --cflags $MODULES)
         # shellcheck disable=SC2086
-        "$CXX_BIN" -std=c++11 -O2 -fPIC -DWEBVIEW_STATIC \
+        "$CXX_BIN" -std=c++17 -O2 -fPIC -DWEBVIEW_STATIC \
             -I"$INC" $CFLAGS -c "$SRC" -o "$OUT/webview.o"
 
         # shellcheck disable=SC2086
-        "$CXX_BIN" -std=c++11 -O2 -fPIC $CFLAGS \
+        "$CXX_BIN" -std=c++17 -O2 -fPIC $CFLAGS \
             -c "$WINDECOR/windecor_gtk.cc" -o "$OUT/windecor.o"
         ;;
 esac

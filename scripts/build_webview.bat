@@ -59,10 +59,10 @@ if /i "%CXX_BIN%"=="cl" goto msvc
 :clang
 set WV2_FLAG=
 if defined WV2_INC set WV2_FLAG=-I"%WV2_INC%"
-clang++ -std=c++11 -O2 -DWEBVIEW_STATIC -I"%INC%" %WV2_FLAG% ^
+clang++ -std=c++17 -O2 -DWEBVIEW_STATIC -I"%INC%" %WV2_FLAG% ^
     -c "%SRC%" -o "%OUT%\webview.o"
 if errorlevel 1 exit /b 1
-clang++ -std=c++11 -O2 ^
+clang++ -std=c++17 -O2 ^
     -c "%WINDECOR%" -o "%OUT%\windecor.o"
 if errorlevel 1 exit /b 1
 echo built %OUT%\webview.o
