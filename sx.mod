@@ -2,7 +2,7 @@ version "v0.0.1"
 spectre_version "v0.0.17"
 
 build dev {
-    info "formant is a library and cannot be built standalone."
+    note "formant is a library and cannot be built standalone."
 }
 
 build example_titlebar {
