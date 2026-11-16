@@ -1,18 +1,20 @@
 version "v0.0.1"
 spectre_version "v0.0.17"
 
+var {
+    EXAMPLE_OUT="custom_titlebar"
+    windows {
+        EXAMPLE_OUT="custom_titlebar.exe"
+    }
+}
+
 build dev {
     note "formant is a library and cannot be built standalone."
 }
 
 build example_titlebar {
     entry "./examples/custom_titlebar.sx"
-    windows {
-        flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "examples/custom_titlebar.exe", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
-    }
-    posix {
-        flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "examples/custom_titlebar", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
-    }
+    flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "examples/$EXAMPLE_OUT", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
 }
 
 dep "https://github.com/webview/webview.git" {
