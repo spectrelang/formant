@@ -14,7 +14,7 @@ build dev {
 
 build example_titlebar {
     entry "./examples/custom_titlebar.sx"
-    flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "examples/$EXAMPLE_OUT", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
+    flags ["-runtime:hosted", "-dynamic", "-o", "examples/$EXAMPLE_OUT", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
 }
 
 dep "https://github.com/webview/webview.git" {
