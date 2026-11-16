@@ -16,21 +16,6 @@ build dev {
     }
 }
 
-build example {
-    entry "./examples/contact_form.sx"
-    flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "examples/contact_form", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
-}
-
-build example_ft {
-    entry "./examples/profile_form.sx"
-    flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "examples/profile_form", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
-}
-
-build example_all {
-    entry "./examples/component_gallery.sx"
-    flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "examples/component_gallery", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
-}
-
 build example_titlebar {
     entry "./examples/custom_titlebar.sx"
     windows {
