@@ -1,19 +1,8 @@
 version "v0.0.1"
 spectre_version "v0.0.17"
 
-build release {
-    entry "./src/main.sx"
-    flags ["-release", "-alt", "-runtime:hosted", "-dynamic", "-o", "formant", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
-}
-
 build dev {
-    entry "./src/main.sx"
-    windows {
-        flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "formant-dev.exe", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
-    }
-    posix {
-        flags ["-alt", "-runtime:hosted", "-dynamic", "-o", "formant-dev", "-link-obj:$OUT/webview.o", "-link-obj:$OUT/windecor.o"]
-    }
+    info "formant is a library and cannot be built standalone."
 }
 
 build example_titlebar {
