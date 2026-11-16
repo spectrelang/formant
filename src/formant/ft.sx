@@ -4,10 +4,10 @@
 /// remaining elements map onto Formant components. See examples/*.ft for a
 /// complete template.
 
-val mem        = use("mem.sx")
-val node       = use("node.sx")
-val str        = use("std/string")
-val xml        = use("xml.sx")
+val mem  = use("mem.sx")
+val node = use("node.sx")
+val str  = use("std/string")
+val xml  = use("xml.sx")
 
 pub type FtError = {
     line: i32
@@ -46,9 +46,9 @@ fn parse_bool(v: str.StringView) bool = {
         return false
     }
     return trust str.eql_cstr(v, c"true")
-        || trust str.eql_cstr(v, c"1")
-        || trust str.eql_cstr(v, c"yes")
-        || trust str.eql_cstr(v, c"on")
+    || trust str.eql_cstr(v, c"1")
+    || trust str.eql_cstr(v, c"yes")
+    || trust str.eql_cstr(v, c"on")
 }
 
 fn parse_int(v: str.StringView, fallback: i32) i32 = trust {
@@ -254,7 +254,12 @@ fn add_option(b: ref mem.Bump, x: ref xml.XNode, n: mut ref node.Node) void = tr
     node.option_add(b, n, value, label)
 }
 
-fn map_children(b: ref mem.Bump, ctx: mut ref Ctx, x: ref xml.XNode, n: mut ref node.Node) void = trust {
+fn map_children(
+    b: ref mem.Bump,
+    ctx: mut ref Ctx,
+    x: ref xml.XNode,
+    n: mut ref node.Node
+) void = trust {
     val cur: mut ref xml.XNode = x.first
     for {
         if cur == none {
@@ -317,7 +322,7 @@ fn map_element(b: ref mem.Bump, ctx: mut ref Ctx, x: ref xml.XNode) ref node.Nod
         kind = node.Kind.Field
         matcher = true
     } elif eql(x.name, "input") || eql(x.name, "textarea") || eql(x.name, "select")
-        || eql(x.name, "checkbox") || eql(x.name, "radio") || eql(x.name, "range") {
+    || eql(x.name, "checkbox") || eql(x.name, "radio") || eql(x.name, "range") {
         kind = node.Kind.Field
         matcher = true
     } elif eql(x.name, "button") {
@@ -465,7 +470,7 @@ pub fn parse(
                 return err FtError{line: 0, message: "out of memory"}
             }
             @memset(ctx as ref void, 0, @sizeof(Ctx) as usize)
-                    ctx.failed = false
+            ctx.failed = false
             ctx.line = root.line
             ctx.message = "invalid template"
             val n: ref node.Node = map_element(b, ctx, root)

@@ -29,7 +29,11 @@ fn on_event(ev: formant.Event, _: ref void) void = trust {
         if str.eql_cstr(ev.name, c"close-saved") {
             formant.close_dialog(ev.form, "saved")
         } elif str.eql_cstr(ev.name, c"help") {
-            formant.toast(ev.form, "Click a field to edit it. Changes are local to this demo.", "info")
+            formant.toast(
+                ev.form,
+                "Click a field to edit it. Changes are local to this demo.",
+                "info"
+            )
         } elif str.eql_cstr(ev.name, c"cancel") {
             formant.set_value(ev.form, "display_name", "")
             formant.set_value(ev.form, "username", "")

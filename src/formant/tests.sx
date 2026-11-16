@@ -1,12 +1,12 @@
 /// Headless tests for the template reader and HTML renderer.
 
-val mem        = use("mem.sx")
-val builder    = use("std/string/builder")
-val ft         = use("ft.sx")
-val html       = use("html.sx")
-val node       = use("node.sx")
-val str        = use("std/string")
-val xml        = use("xml.sx")
+val mem     = use("mem.sx")
+val builder = use("std/string/builder")
+val ft      = use("ft.sx")
+val html    = use("html.sx")
+val node    = use("node.sx")
+val str     = use("std/string")
+val xml     = use("xml.sx")
 
 fn arena_or_die() ref mem.Bump = trust {
     val res = mem.new(65536 as usize)
@@ -25,8 +25,8 @@ test "xml parses attributes and entities" {
     trust {
         val arena = arena_or_die()
         val src: str.StringView = \\<form title="A &amp; B">
-\\  <field name="x" label="X &lt;1&gt;" />
-\\</form>
+        \\  <field name="x" label="X &lt;1&gt;" />
+        \\</form>
         val parsed = xml.parse(arena, src)
         match parsed {
             ok root => {
@@ -48,20 +48,20 @@ test "ft maps a form tree" {
     trust {
         val arena = arena_or_die()
         val src: str.StringView = \\<form name="contact" title="Contact" width="720" height="600" theme="linux" decorations="custom">
-\\  <section title="Details">
-\\    <row>
-\\      <field name="first" label="First name" required="true" />
-\\      <field name="email" type="email" label="Email" />
-\\    </row>
-\\    <select name="country" label="Country">
-\\      <option value="us">United States</option>
-\\      <option value="ca">Canada</option>
-\\    </select>
-\\  </section>
-\\  <actions>
-\\    <button name="save" label="Save" variant="primary" submit="true" />
-\\  </actions>
-\\</form>
+        \\  <section title="Details">
+        \\    <row>
+        \\      <field name="first" label="First name" required="true" />
+        \\      <field name="email" type="email" label="Email" />
+        \\    </row>
+        \\    <select name="country" label="Country">
+        \\      <option value="us">United States</option>
+        \\      <option value="ca">Canada</option>
+        \\    </select>
+        \\  </section>
+        \\  <actions>
+        \\    <button name="save" label="Save" variant="primary" submit="true" />
+        \\  </actions>
+        \\</form>
         val parsed = ft.parse(arena, src)
         match parsed {
             ok root => {
@@ -84,10 +84,10 @@ test "html renderer escapes and emits controls" {
     trust {
         val arena = arena_or_die()
         val src: str.StringView = \\<form name="contact" title="Contact">
-\\  <section title="A &amp; B">
-\\    <field name="email" type="email" label="Email" required="true" />
-\\  </section>
-\\</form>
+        \\  <section title="A &amp; B">
+        \\    <field name="email" type="email" label="Email" required="true" />
+        \\  </section>
+        \\</form>
         val parsed = ft.parse(arena, src)
         match parsed {
             ok root => {

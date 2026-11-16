@@ -5,17 +5,17 @@
 /// once into a webview document and styled with the host platform's design
 /// language.
 
-val mem        = use("mem.sx")
-val builder    = use("std/string/builder")
-val fs         = use("std/fs")
-val ft_mod     = use("ft.sx")
-val html_mod   = use("html.sx")
-val json       = use("std/json")
-val node       = use("node.sx")
-val stdio      = use("std/stdio")
-val str        = use("std/string")
-val webview    = use("webview.sx")
-val win        = use("win.sx")
+val mem      = use("mem.sx")
+val builder  = use("std/string/builder")
+val fs       = use("std/fs")
+val ft_mod   = use("ft.sx")
+val html_mod = use("html.sx")
+val json     = use("std/json")
+val node     = use("node.sx")
+val stdio    = use("std/stdio")
+val str      = use("std/string")
+val webview  = use("webview.sx")
+val win      = use("win.sx")
 
 pub enum Theme = {
     Auto
@@ -374,28 +374,45 @@ pub fn text_input(f: mut ref Form, field_name: str.StringView, label: str.String
     }
 }
 
-pub fn email_input(f: mut ref Form, field_name: str.StringView, label: str.StringView) void = trust {
+pub fn email_input(
+    f: mut ref Form,
+    field_name: str.StringView,
+    label: str.StringView
+) void = trust {
     val n = field_base(f, node.FieldKind.Email, field_name, label)
     if n != none {
         f.last_field = n
     }
 }
 
-pub fn password_input(f: mut ref Form, field_name: str.StringView, label: str.StringView) void = trust {
+pub fn password_input(
+    f: mut ref Form,
+    field_name: str.StringView,
+    label: str.StringView
+) void = trust {
     val n = field_base(f, node.FieldKind.Password, field_name, label)
     if n != none {
         f.last_field = n
     }
 }
 
-pub fn number_input(f: mut ref Form, field_name: str.StringView, label: str.StringView) void = trust {
+pub fn number_input(
+    f: mut ref Form,
+    field_name: str.StringView,
+    label: str.StringView
+) void = trust {
     val n = field_base(f, node.FieldKind.Number, field_name, label)
     if n != none {
         f.last_field = n
     }
 }
 
-pub fn textarea(f: mut ref Form, field_name: str.StringView, label: str.StringView, rows: i32) void = trust {
+pub fn textarea(
+    f: mut ref Form,
+    field_name: str.StringView,
+    label: str.StringView,
+    rows: i32
+) void = trust {
     val n = field_base(f, node.FieldKind.Textarea, field_name, label)
     if n != none {
         val mn: mut ref node.Node = n as mut ref node.Node
@@ -554,7 +571,11 @@ pub fn button(
     add(f, n)
 }
 
-pub fn submit_button(f: mut ref Form, action_name: str.StringView, label: str.StringView) void = trust {
+pub fn submit_button(
+    f: mut ref Form,
+    action_name: str.StringView,
+    label: str.StringView
+) void = trust {
     val n: ref node.Node = node.new(f.arena, node.Kind.Button)
     if n == none {
         return
@@ -870,11 +891,8 @@ fn on_binding(id: ref u8, req: ref u8, arg: ref void) void = trust {
                         action = n
                     }
                     val valid_values: mut bool = false
-                    match values_opt {
-                        some _ => {
-                            valid_values = true
-                        }
-                        none => {}
+                    if values_opt is some _ {
+                        valid_values = true
                     }
                     val ev: Event = Event{
                         kind: kind
@@ -918,11 +936,8 @@ fn on_window_binding(id: ref u8, req: ref u8, arg: ref void) void = trust {
                                 win.begin_move(native)
                             } elif str.eql_cstr(action, c"resize") {
                                 val edge: mut i32 = 0
-                                match json.object_get_int(p, "arg") {
-                                    some value => {
-                                        edge = value as i32
-                                    }
-                                    none => {}
+                                if json.object_get_int(p, "arg") is some value {
+                                    edge = value as i32
                                 }
                                 win.begin_resize(native, edge)
                             } elif str.eql_cstr(action, c"toggle-maximize") {
@@ -932,11 +947,8 @@ fn on_window_binding(id: ref u8, req: ref u8, arg: ref void) void = trust {
                                 maximized = win.is_maximized(native) != 0
                             } elif str.eql_cstr(action, c"titlebar-height") {
                                 val height: mut i32 = 0
-                                match json.object_get_int(p, "arg") {
-                                    some value => {
-                                        height = value as i32
-                                    }
-                                    none => {}
+                                if json.object_get_int(p, "arg") is some value {
+                                    height = value as i32
                                 }
                                 win.set_titlebar_height(native, height)
                             }

@@ -36,11 +36,20 @@ pub extern (C) fn create(debug: i32, window: ref void) ref void = "webview_creat
 pub extern (C) fn destroy(w: ref void) i32 = "webview_destroy"
 pub extern (C) fn run(w: ref void) i32 = "webview_run"
 pub extern (C) fn terminate(w: ref void) i32 = "webview_terminate"
-pub extern (C) fn dispatch(w: ref void, fnptr: fn(ref void, ref void) void, arg: ref void) i32 = "webview_dispatch"
+pub extern (C) fn dispatch(
+    w: ref void,
+    fnptr: fn(ref void, ref void) void,
+    arg: ref void
+) i32 = "webview_dispatch"
 pub extern (C) fn get_window(w: ref void) ref void = "webview_get_window"
 
 pub extern (C) fn set_title(w: ref void, title: ref u8) i32 = "webview_set_title"
-pub extern (C) fn set_size(w: ref void, width: i32, height: i32, hints: i32) i32 = "webview_set_size"
+pub extern (C) fn set_size(
+    w: ref void,
+    width: i32,
+    height: i32,
+    hints: i32
+) i32 = "webview_set_size"
 pub extern (C) fn navigate(w: ref void, url: ref u8) i32 = "webview_navigate"
 pub extern (C) fn set_html(w: ref void, html: ref u8) i32 = "webview_set_html"
 pub extern (C) fn init(w: ref void, js: ref u8) i32 = "webview_init"

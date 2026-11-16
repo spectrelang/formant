@@ -290,7 +290,10 @@ fn render_field(sb: builder.StringBuilder, n: ref node.Node) void = trust {
             builder.StringBuilder.append_cstr(sb, c">")
             escape_cstr_into(sb, n.label)
             if n.required {
-                builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-req\" aria-hidden=\"true\">*</span>")
+                builder.StringBuilder.append_cstr(
+                    sb,
+                    c"<span class=\"fm-req\" aria-hidden=\"true\">*</span>"
+                )
             }
             builder.StringBuilder.append_cstr(sb, c"</label>")
         }
@@ -425,7 +428,10 @@ fn render_checkbox(sb: builder.StringBuilder, n: ref node.Node) void = trust {
     builder.StringBuilder.append_cstr(sb, c"><span>")
     escape_cstr_into(sb, n.label)
     if n.required {
-        builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-req\" aria-hidden=\"true\">*</span>")
+        builder.StringBuilder.append_cstr(
+            sb,
+            c"<span class=\"fm-req\" aria-hidden=\"true\">*</span>"
+        )
     }
     builder.StringBuilder.append_cstr(sb, c"</span></label>")
     render_field_footer(sb, n)
@@ -436,7 +442,10 @@ fn render_radio(sb: builder.StringBuilder, n: ref node.Node) void = trust {
         builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-label\">")
         escape_cstr_into(sb, n.label)
         if n.required {
-            builder.StringBuilder.append_cstr(sb, c"<span class=\"fm-req\" aria-hidden=\"true\">*</span>")
+            builder.StringBuilder.append_cstr(
+                sb,
+                c"<span class=\"fm-req\" aria-hidden=\"true\">*</span>"
+            )
         }
         builder.StringBuilder.append_cstr(sb, c"</span>")
     }
@@ -512,25 +521,61 @@ fn render_button(sb: builder.StringBuilder, n: ref node.Node) void = trust {
 
 fn render_window_controls(sb: builder.StringBuilder) void = trust {
     builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-window-controls\">")
-    builder.StringBuilder.append_cstr(sb, c"<button type=\"button\" class=\"fm-window-btn fm-window-minimize\" data-fm-window=\"minimize\" aria-label=\"Minimize\" title=\"Minimize\"><span aria-hidden=\"true\"></span></button>")
-    builder.StringBuilder.append_cstr(sb, c"<button type=\"button\" class=\"fm-window-btn fm-window-maximize\" data-fm-window=\"maximize\" aria-label=\"Maximize\" title=\"Maximize\"><span aria-hidden=\"true\"></span></button>")
-    builder.StringBuilder.append_cstr(sb, c"<button type=\"button\" class=\"fm-window-btn fm-window-close\" data-fm-window=\"close\" aria-label=\"Close\" title=\"Close\"><span aria-hidden=\"true\"></span></button>")
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<button type=\"button\" class=\"fm-window-btn fm-window-minimize\" data-fm-window=\"minimize\" aria-label=\"Minimize\" title=\"Minimize\"><span aria-hidden=\"true\"></span></button>"
+    )
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<button type=\"button\" class=\"fm-window-btn fm-window-maximize\" data-fm-window=\"maximize\" aria-label=\"Maximize\" title=\"Maximize\"><span aria-hidden=\"true\"></span></button>"
+    )
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<button type=\"button\" class=\"fm-window-btn fm-window-close\" data-fm-window=\"close\" aria-label=\"Close\" title=\"Close\"><span aria-hidden=\"true\"></span></button>"
+    )
     builder.StringBuilder.append_cstr(sb, c"</div>")
 }
 
 fn render_resize_handles(sb: builder.StringBuilder) void = trust {
-    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-n\" data-fm-resize=\"0\"></div>")
-    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-s\" data-fm-resize=\"1\"></div>")
-    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-w\" data-fm-resize=\"2\"></div>")
-    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-e\" data-fm-resize=\"3\"></div>")
-    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-nw\" data-fm-resize=\"4\"></div>")
-    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-ne\" data-fm-resize=\"5\"></div>")
-    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-sw\" data-fm-resize=\"6\"></div>")
-    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-resize-handle fm-resize-se\" data-fm-resize=\"7\"></div>")
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<div class=\"fm-resize-handle fm-resize-n\" data-fm-resize=\"0\"></div>"
+    )
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<div class=\"fm-resize-handle fm-resize-s\" data-fm-resize=\"1\"></div>"
+    )
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<div class=\"fm-resize-handle fm-resize-w\" data-fm-resize=\"2\"></div>"
+    )
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<div class=\"fm-resize-handle fm-resize-e\" data-fm-resize=\"3\"></div>"
+    )
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<div class=\"fm-resize-handle fm-resize-nw\" data-fm-resize=\"4\"></div>"
+    )
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<div class=\"fm-resize-handle fm-resize-ne\" data-fm-resize=\"5\"></div>"
+    )
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<div class=\"fm-resize-handle fm-resize-sw\" data-fm-resize=\"6\"></div>"
+    )
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<div class=\"fm-resize-handle fm-resize-se\" data-fm-resize=\"7\"></div>"
+    )
 }
 
 fn render_default_titlebar(sb: builder.StringBuilder, title: ref u8) void = trust {
-    builder.StringBuilder.append_cstr(sb, c"<header class=\"fm-headerbar\"><div class=\"fm-headerbar-title\"><span class=\"fm-title\">")
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<header class=\"fm-headerbar\"><div class=\"fm-headerbar-title\"><span class=\"fm-title\">"
+    )
     escape_cstr_into(sb, title)
     builder.StringBuilder.append_cstr(sb, c"</span></div><div class=\"fm-headerbar-actions\">")
     render_window_controls(sb)
@@ -719,7 +764,10 @@ fn render_dialog(sb: builder.StringBuilder, n: ref node.Node) void = trust {
     }
     builder.StringBuilder.append_cstr(sb, c"\"")
     put_attr(sb, c"id", n.id)
-    builder.StringBuilder.append_cstr(sb, c"><div class=\"fm-dialog\" role=\"dialog\" aria-modal=\"true\"")
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"><div class=\"fm-dialog\" role=\"dialog\" aria-modal=\"true\""
+    )
     if !node.is_empty(n.title) {
         builder.StringBuilder.append_cstr(sb, c" aria-label=\"")
         escape_cstr_into(sb, n.title)
@@ -727,15 +775,24 @@ fn render_dialog(sb: builder.StringBuilder, n: ref node.Node) void = trust {
     }
     builder.StringBuilder.append_cstr(sb, c"><div class=\"fm-dialog-head\"><h2>")
     escape_cstr_into(sb, n.title)
-    builder.StringBuilder.append_cstr(sb, c"</h2><button type=\"button\" class=\"fm-dialog-close\" data-fm-close=\"")
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"</h2><button type=\"button\" class=\"fm-dialog-close\" data-fm-close=\""
+    )
     escape_cstr_into(sb, n.id)
-    builder.StringBuilder.append_cstr(sb, c"\" aria-label=\"Close\">&times;</button></div><div class=\"fm-dialog-body\">")
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"\" aria-label=\"Close\">&times;</button></div><div class=\"fm-dialog-body\">"
+    )
     render_children(sb, n)
     builder.StringBuilder.append_cstr(sb, c"</div></div></div>")
 }
 
 fn render_menu(sb: builder.StringBuilder, n: ref node.Node) void = trust {
-    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-menu\"><button type=\"button\" class=\"fm-menu-trigger\">")
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<div class=\"fm-menu\"><button type=\"button\" class=\"fm-menu-trigger\">"
+    )
     escape_cstr_into(sb, n.label)
     builder.StringBuilder.append_cstr(sb, c"</button><div class=\"fm-menu-items\">")
     render_children(sb, n)
@@ -743,7 +800,10 @@ fn render_menu(sb: builder.StringBuilder, n: ref node.Node) void = trust {
 }
 
 fn render_menu_item(sb: builder.StringBuilder, n: ref node.Node) void = trust {
-    builder.StringBuilder.append_cstr(sb, c"<button type=\"button\" class=\"fm-menu-item\" data-fm-action=\"")
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<button type=\"button\" class=\"fm-menu-item\" data-fm-action=\""
+    )
     escape_cstr_into(sb, n.name)
     builder.StringBuilder.append_cstr(sb, c"\">")
     escape_cstr_into(sb, n.label)
@@ -844,11 +904,17 @@ pub fn render(
     if custom_decorations {
         builder.StringBuilder.append_cstr(sb, c" fm-custom-decorations")
     }
-    builder.StringBuilder.append_cstr(sb, c"\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"color-scheme\" content=\"light dark\"><title>")
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"color-scheme\" content=\"light dark\"><title>"
+    )
     escape_cstr_into(sb, title)
     builder.StringBuilder.append_cstr(sb, c"</title><style>")
     render_styles(sb)
-    builder.StringBuilder.append_cstr(sb, c"</style></head><body class=\"fm-body\"><div class=\"fm-app\">")
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"</style></head><body class=\"fm-body\"><div class=\"fm-app\">"
+    )
 
     val header: mut ref node.Node = none
     if root.first != none && root.first.kind == node.Kind.Header {
@@ -858,7 +924,10 @@ pub fn render(
         render_default_titlebar(sb, title)
     }
 
-    builder.StringBuilder.append_cstr(sb, c"<main class=\"fm-main\"><form class=\"fm-form\" data-fm-form")
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<main class=\"fm-main\"><form class=\"fm-form\" data-fm-form"
+    )
     put_attr(sb, c"data-fm-name", root.name)
     put_attr(sb, c"action", root.action)
     put_attr(sb, c"method", root.method)
@@ -889,7 +958,10 @@ pub fn render(
         cur = c.next
     }
 
-    builder.StringBuilder.append_cstr(sb, c"<div class=\"fm-busy-overlay\"><div class=\"fm-spinner\"></div></div>")
+    builder.StringBuilder.append_cstr(
+        sb,
+        c"<div class=\"fm-busy-overlay\"><div class=\"fm-spinner\"></div></div>"
+    )
     builder.StringBuilder.append_cstr(sb, c"</form></main></div>")
     if custom_decorations {
         render_resize_handles(sb)

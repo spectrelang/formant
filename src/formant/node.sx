@@ -216,16 +216,13 @@ pub fn attr_set(
         cur = cur.next
     }
     val raw = mem.alloc(b, @sizeof(Attr) as usize)
-    match raw {
-        some mem => {
-            val a: mut ref Attr = mem as mut ref Attr
-            @memset(a as ref void, 0, @sizeof(Attr) as usize)
-            a.name = key
-            a.value = v
-            a.next = n.attrs
-            n.attrs = a
-        }
-        none => {}
+    if raw is some mem {
+        val a: mut ref Attr = mem as mut ref Attr
+        @memset(a as ref void, 0, @sizeof(Attr) as usize)
+        a.name = key
+        a.value = v
+        a.next = n.attrs
+        n.attrs = a
     }
 }
 
@@ -236,27 +233,24 @@ pub fn option_add(
     label: str.StringView
 ) void = trust {
     val raw = mem.alloc(b, @sizeof(Option) as usize)
-    match raw {
-        some mem => {
-            val o: mut ref Option = mem as mut ref Option
-            @memset(o as ref void, 0, @sizeof(Option) as usize)
-            o.value = strdup(b, value)
-            o.label = strdup(b, label)
-            o.next = none
-            if n.options == none {
-                n.options = o
-            } else {
-                val cur: mut ref Option = n.options
-                for {
-                    if cur.next == none {
-                        break
-                    }
-                    cur = cur.next
+    if raw is some mem {
+        val o: mut ref Option = mem as mut ref Option
+        @memset(o as ref void, 0, @sizeof(Option) as usize)
+        o.value = strdup(b, value)
+        o.label = strdup(b, label)
+        o.next = none
+        if n.options == none {
+            n.options = o
+        } else {
+            val cur: mut ref Option = n.options
+            for {
+                if cur.next == none {
+                    break
                 }
-                cur.next = o
+                cur = cur.next
             }
+            cur.next = o
         }
-        none => {}
     }
 }
 
@@ -267,27 +261,24 @@ pub fn column_add(
     label: str.StringView
 ) void = trust {
     val raw = mem.alloc(b, @sizeof(Option) as usize)
-    match raw {
-        some mem => {
-            val o: mut ref Option = mem as mut ref Option
-            @memset(o as ref void, 0, @sizeof(Option) as usize)
-            o.value = strdup(b, value)
-            o.label = strdup(b, label)
-            o.next = none
-            if n.columns == none {
-                n.columns = o
-            } else {
-                val cur: mut ref Option = n.columns
-                for {
-                    if cur.next == none {
-                        break
-                    }
-                    cur = cur.next
+    if raw is some mem {
+        val o: mut ref Option = mem as mut ref Option
+        @memset(o as ref void, 0, @sizeof(Option) as usize)
+        o.value = strdup(b, value)
+        o.label = strdup(b, label)
+        o.next = none
+        if n.columns == none {
+            n.columns = o
+        } else {
+            val cur: mut ref Option = n.columns
+            for {
+                if cur.next == none {
+                    break
                 }
-                cur.next = o
+                cur = cur.next
             }
+            cur.next = o
         }
-        none => {}
     }
 }
 

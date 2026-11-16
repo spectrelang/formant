@@ -6,7 +6,7 @@
 /// references. Strings are copied into the caller's arena.
 
 val mem = use("mem.sx")
-val str        = use("std/string")
+val str = use("std/string")
 
 pub type XAttr = {
     name: mut str.StringView
@@ -300,20 +300,17 @@ fn append_text(b: ref mem.Bump, node: mut ref XNode, text: str.StringView) void 
     }
     val total: i64 = node.text.len + 1 + decoded.len
     val raw = mem.alloc(b, (total + 1) as usize)
-    match raw {
-        some rawp => {
-            val dst: ref u8 = rawp as ref u8
-            @memcpy(dst as ref void, node.text.ptr as ref void, node.text.len as usize)
-            @store8(@ptradd(dst, node.text.len), 32)
-            @memcpy(
-                @ptradd(dst, node.text.len + 1),
-                decoded.ptr as ref void,
-                decoded.len as usize
-            )
-            @store8(@ptradd(dst, total), 0)
-            node.text = str.view(dst, total)
-        }
-        none => {}
+    if raw is some rawp {
+        val dst: ref u8 = rawp as ref u8
+        @memcpy(dst as ref void, node.text.ptr as ref void, node.text.len as usize)
+        @store8(@ptradd(dst, node.text.len), 32)
+        @memcpy(
+            @ptradd(dst, node.text.len + 1),
+            decoded.ptr as ref void,
+            decoded.len as usize
+        )
+        @store8(@ptradd(dst, total), 0)
+        node.text = str.view(dst, total)
     }
 }
 

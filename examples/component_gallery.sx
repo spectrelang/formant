@@ -16,7 +16,11 @@ fn on_event(ev: formant.Event, _: ref void) void = trust {
         } elif str.eql_cstr(ev.name, c"reload") {
             formant.toast(ev.form, "Reloaded the sample data.", "info")
         } elif str.eql_cstr(ev.name, c"invalid") {
-            formant.set_error(ev.form, "required_field", "Demonstrating an inline validation error.")
+            formant.set_error(
+                ev.form,
+                "required_field",
+                "Demonstrating an inline validation error."
+            )
         }
     }
 
@@ -108,7 +112,10 @@ pub fn main() i32 = trust {
             formant.end(f)
 
             formant.dialog(f, "sample-dialog", "A modal dialog")
-            formant.text(f, "Dialogs use the same backdrop, radius, and shadow as the host platform.")
+            formant.text(
+                f,
+                "Dialogs use the same backdrop, radius, and shadow as the host platform."
+            )
             formant.text_input(f, "dialog_name", "Name")
             formant.placeholder(f, "Optional")
             formant.actions(f)
